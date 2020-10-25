@@ -773,7 +773,7 @@ c = jsonSelect(b, "data.age");`
 		t.Run(tt.name, func(t *testing.T) {
 			r := setup(tt.fields.input)
 			c := r.values["c"]
-			m := map[string]valHolder {
+			m := map[string]valHolder{
 				"c": c,
 			}
 			if diff := compare(tt.fields.values, m); !diff {
@@ -817,7 +817,7 @@ func TestKlangListener_handlekubectldelete(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			r := setup(tt.fields.input)
 			a := r.values["a"]
-			m := map[string]valHolder {
+			m := map[string]valHolder{
 				"a": a,
 			}
 			if diff := compare(tt.fields.values, m); !diff {
@@ -895,7 +895,7 @@ age = jsonSelect(fo, selector);
 		t.Run(tt.name, func(t *testing.T) {
 			r := setup(tt.fields.input)
 			age := r.values["age"]
-			m := map[string]valHolder {
+			m := map[string]valHolder{
 				"age": age,
 			}
 			if diff := compare(tt.fields.values, m); !diff {
@@ -909,7 +909,7 @@ func TestKlangListener_handleShellScript(t *testing.T) {
 	d := `
 #!/bin/bash
 echo "hello"`
-	d = "a = shellScript `"+d+"`;"
+	d = "a = shellScript `" + d + "`;"
 	fmt.Printf("%s", d)
 	type fields struct {
 		input  string
@@ -942,7 +942,7 @@ echo "hello"`
 		t.Run(tt.name, func(t *testing.T) {
 			r := setup(tt.fields.input)
 			a := r.values["a"]
-			m := map[string]valHolder {
+			m := map[string]valHolder{
 				"a": a,
 			}
 			if diff := compare(tt.fields.values, m); !diff {
@@ -1004,4 +1004,3 @@ func checkFirstInSecond(first, second map[string]valHolder) bool {
 //		return false
 //	}
 //}
-

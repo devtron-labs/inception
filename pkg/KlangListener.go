@@ -95,9 +95,9 @@ type KlangListener struct {
 
 func NewKlangListener(mapper *Mapper) *KlangListener {
 	return &KlangListener{
-		ifWhileCount: 0,
-		values:       make(map[string]valHolder, 0),
-		mapper:       mapper,
+		ifWhileCount:        0,
+		values:              make(map[string]valHolder, 0),
+		mapper:              mapper,
 		kubernetesResources: make(map[string][]Resource, 0),
 	}
 }

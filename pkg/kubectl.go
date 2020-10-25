@@ -37,12 +37,12 @@ import (
 )
 
 const (
-	crdReadinessTimeout time.Duration = time.Duration(3)*time.Second
+	crdReadinessTimeout time.Duration = time.Duration(3) * time.Second
 )
 
 type kubectl struct {
-	restConfig *rest.Config
-	kubectl    kube.Kubectl
+	restConfig          *rest.Config
+	kubectl             kube.Kubectl
 	extensionsClientset *clientset.Clientset
 }
 
@@ -83,7 +83,7 @@ func (k *kubectl) GetResource(ctx context.Context, r *GetRequest) (*ManifestResp
 	if err != nil {
 		return nil, err
 	}
-	logCtx := log.WithField("gkv", r.GroupVersionKind).WithField("name", r.Name).WithField("namespace",r.Namespace)
+	logCtx := log.WithField("gkv", r.GroupVersionKind).WithField("name", r.Name).WithField("namespace", r.Namespace)
 	logCtx.Infof("final data %s", string(data))
 	return &ManifestResponse{string(data)}, nil
 }
@@ -158,15 +158,15 @@ func (k *kubectl) ApplyResource(ctx context.Context, r *ApplyRequest) ([]ApplyRe
 	for _, manifest := range manifests {
 		message, err := k.kubectl.ApplyResource(context.Background(), k.restConfig, &manifest, r.Namespace, util.DryRunNone, force, validate)
 		res := ApplyResponse{
-			Message: message,
+			Message:          message,
 			GroupVersionKind: manifest.GroupVersionKind(),
-			Name: manifest.GetName(),
-			Namespace: manifest.GetNamespace(),
+			Name:             manifest.GetName(),
+			Namespace:        manifest.GetNamespace(),
 		}
 		if err != nil {
 			res.Err = err.Error()
 		}
-		responses = append( responses, res)
+		responses = append(responses, res)
 		if kube.IsCRD(&manifest) {
 			k.ensureCRDReady(manifest.GetName())
 		}

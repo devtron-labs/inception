@@ -120,4 +120,3 @@ func logicalStringStringOperation(lhs, rhs valHolder, operator LogicalOperator) 
 		return false
 	}
 }
-

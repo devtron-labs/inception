@@ -34,10 +34,10 @@ func TestInstallerReconciler_apply(t *testing.T) {
 	installer := &installerv1alpha1.Installer{
 		Spec: installerv1alpha1.InstallerSpec{URL: "https://raw.githubusercontent.com/pghildiyal/script-test/main/script"},
 		Status: installerv1alpha1.InstallerStatus{
-			Sync:            installerv1alpha1.SyncStatus{
-				Status:     installerv1alpha1.SyncStatusCodeOutOfSync,
-				URL:        "https://raw.githubusercontent.com/pghildiyal/script-test/main/script",
-				Data:       "",
+			Sync: installerv1alpha1.SyncStatus{
+				Status: installerv1alpha1.SyncStatusCodeOutOfSync,
+				URL:    "https://raw.githubusercontent.com/pghildiyal/script-test/main/script",
+				Data:   "",
 			},
 		},
 	}

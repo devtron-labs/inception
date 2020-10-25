@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 package pkg
 
 import "k8s.io/apimachinery/pkg/util/intstr"
@@ -145,7 +144,6 @@ type WorkflowStep struct {
 
 type Command struct {
 	Type string
-
 }
 
 // DAGTemplate is a template subtype for directed acyclic graph templates

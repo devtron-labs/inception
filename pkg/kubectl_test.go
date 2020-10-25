@@ -83,18 +83,18 @@ func Test_kubectl_GetResource(t *testing.T) {
 
 func Test_kubectl_PatchResource(t *testing.T) {
 	pr := PatchRequest{
-		Name:             "test-cm2",
-		Namespace:        "dev",
+		Name:      "test-cm2",
+		Namespace: "dev",
 		GroupVersionKind: schema.GroupVersionKind{
 			Version: "v1",
 			Kind:    "ConfigMap",
 		},
-		Patch:            `{"data":{"age":"35"}}`,
-		PatchType:        "application/merge-patch+json",
+		Patch:     `{"data":{"age":"35"}}`,
+		PatchType: "application/merge-patch+json",
 	}
-	type fields struct {}
+	type fields struct{}
 	type args struct {
-		r   *PatchRequest
+		r *PatchRequest
 	}
 	tests := []struct {
 		name    string

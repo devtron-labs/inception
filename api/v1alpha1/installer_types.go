@@ -38,8 +38,8 @@ type InstallerStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	CurrentSpecHash string `json:"current_spec_hash"`
-	Sync            SyncStatus
+	CurrentSpecHash string     `json:"current_spec_hash"`
+	Sync            SyncStatus `json:"sync"`
 }
 
 // SyncStatus is a comparison result of application spec and deployed application.

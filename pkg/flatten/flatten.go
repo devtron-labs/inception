@@ -3,10 +3,10 @@ package flatten
 //https://github.com/jeremywohl/flatten/blob/master/flatten.go
 
 import (
-"encoding/json"
-"errors"
-"regexp"
-"strconv"
+	"encoding/json"
+	"errors"
+	"regexp"
+	"strconv"
 )
 
 // The style of keys.  If there is an input with two
@@ -130,4 +130,3 @@ func enkey(top bool, prefix, subkey string, style SeparatorStyle) string {
 
 	return key
 }
-
