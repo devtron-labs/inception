@@ -669,6 +669,18 @@ data:
 	d := "a = `" + a + "`" + `;
 x = kubectl apply a;
 `
+	u := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm2
+update:
+  data:
+    name: xyz
+`
+	e := "a = `" + a + "`;\n" + "u = `" + u + "`;" + `
+x = kubectl apply a -u u
+`
 	fmt.Printf("%s", d)
 	type fields struct {
 		input  string
@@ -686,6 +698,20 @@ x = kubectl apply a;
 			name: "kubectl apply",
 			fields: fields{
 				input: d,
+				values: map[string]valHolder{
+					"x": {
+						dataType: BOOLEAN,
+						name:     "x",
+						value:    true,
+					},
+				},
+			},
+			args: args{},
+		},
+		{
+			name: "kubectl apply with edit",
+			fields: fields{
+				input: e,
 				values: map[string]valHolder{
 					"x": {
 						dataType: BOOLEAN,

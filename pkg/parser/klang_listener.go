@@ -85,6 +85,9 @@ type KlangListener interface {
 	// EnterResource is called when entering the resource production.
 	EnterResource(c *ResourceContext)
 
+	// EnterKubernetes_object_config is called when entering the kubernetes_object_config production.
+	EnterKubernetes_object_config(c *Kubernetes_object_configContext)
+
 	// EnterJsonSelectFn is called when entering the jsonSelectFn production.
 	EnterJsonSelectFn(c *JsonSelectFnContext)
 
@@ -246,6 +249,9 @@ type KlangListener interface {
 
 	// ExitResource is called when exiting the resource production.
 	ExitResource(c *ResourceContext)
+
+	// ExitKubernetes_object_config is called when exiting the kubernetes_object_config production.
+	ExitKubernetes_object_config(c *Kubernetes_object_configContext)
 
 	// ExitJsonSelectFn is called when exiting the jsonSelectFn production.
 	ExitJsonSelectFn(c *JsonSelectFnContext)

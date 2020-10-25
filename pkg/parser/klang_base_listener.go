@@ -176,6 +176,12 @@ func (s *BaseKlangListener) EnterResource(ctx *ResourceContext) {}
 // ExitResource is called when production resource is exited.
 func (s *BaseKlangListener) ExitResource(ctx *ResourceContext) {}
 
+// EnterKubernetes_object_config is called when production kubernetes_object_config is entered.
+func (s *BaseKlangListener) EnterKubernetes_object_config(ctx *Kubernetes_object_configContext) {}
+
+// ExitKubernetes_object_config is called when production kubernetes_object_config is exited.
+func (s *BaseKlangListener) ExitKubernetes_object_config(ctx *Kubernetes_object_configContext) {}
+
 // EnterJsonSelectFn is called when production jsonSelectFn is entered.
 func (s *BaseKlangListener) EnterJsonSelectFn(ctx *JsonSelectFnContext) {}
 

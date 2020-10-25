@@ -67,7 +67,7 @@ log
  ;
 
 kubectl_command
- : KUBECTL APPLY (NAMESPACE ns | string_or_id)+ #applyKubectlCommand
+ : KUBECTL APPLY (NAMESPACE ns | string_or_id | UPDATELOAD kubernetes_object_config)+ #applyKubectlCommand
  | KUBECTL PATCH (NAMESPACE ns | resource | PATCHTYPE patch_type | PATCHLOAD string_or_id)+ #patchKubectlCommand
  | KUBECTL GET (NAMESPACE ns | resource)+ #getKubectlCommand
  | KUBECTL DELETE (NAMESPACE ns | resource)+ #deleteKubectlCommand
@@ -108,6 +108,10 @@ string_or_id
 resource
  : PATH
  | string_or_id
+ ;
+
+kubernetes_object_config
+ : string_or_id
  ;
 
 expr
@@ -207,6 +211,7 @@ DELETE : 'delete';
 NAMESPACE : '-n';
 PATCHTYPE : '--type';
 PATCHLOAD: '-p';
+UPDATELOAD: '-u';
 JSONPATH : '-jsonpath';
 LOAD : 'load';
 JSONSELECT : 'jsonSelect';

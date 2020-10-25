@@ -70,7 +70,6 @@ func updateKubernetesObjectsJson(from, to string, patterns []string) string {
 	return to
 }
 
-
 func updateKubernetesObjectsYaml(from, to string, patterns []string) string {
 	var originalTo string
 	var originalToMap map[string]interface{}

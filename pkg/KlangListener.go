@@ -58,6 +58,8 @@ const (
 	DELETE string = "DELETE"
 )
 
+const yamlSeperator = "\n---\n"
+
 type Resource struct {
 	Operation string
 	Group     string
@@ -429,7 +431,8 @@ func (l *KlangListener) handleYaml_delete_fn(ctx *parser.Yaml_delete_fnContext) 
 			index = i
 		}
 	}
-	yamls := strings.Split(yaml.value.(string), "\n---\n")
+	yamls := strings.Split(yaml.value.(string), yamlSeperator)
+	//yamls, err := kube.SplitYAML([]byte(yaml.value.(string)))
 	var outYamls []string
 	for i, yaml := range yamls {
 		if index == -1 || i == index {
@@ -439,7 +442,7 @@ func (l *KlangListener) handleYaml_delete_fn(ctx *parser.Yaml_delete_fnContext) 
 			outYamls = append(outYamls, yaml)
 		}
 	}
-	yaml.value = strings.Join(outYamls, "\n---\n")
+	yaml.value = strings.Join(outYamls, yamlSeperator)
 	l.values[yaml.name] = yaml
 	fmt.Printf("delete pattern %s, out %+v\n", pattern, yaml)
 	return newEmptyHolder()
@@ -474,7 +477,7 @@ func (l *KlangListener) handleYaml_edit_fn(ctx *parser.Yaml_edit_fnContext) valH
 			index = i
 		}
 	}
-	yamls := strings.Split(yaml.value.(string), "\n---\n")
+	yamls := strings.Split(yaml.value.(string), yamlSeperator)
 	var outYamls []string
 	for i, yaml := range yamls {
 		if index == -1 || i == index {
@@ -484,7 +487,7 @@ func (l *KlangListener) handleYaml_edit_fn(ctx *parser.Yaml_edit_fnContext) valH
 			outYamls = append(outYamls, yaml)
 		}
 	}
-	yaml.value = strings.Join(outYamls, "\n---\n")
+	yaml.value = strings.Join(outYamls, yamlSeperator)
 	l.values[yaml.name] = yaml
 	fmt.Printf("val %+v, pattern %s, out %+v\n", val, pattern, yaml)
 	return newEmptyHolder()
@@ -542,7 +545,7 @@ func (l *KlangListener) handleYaml_select_fn(ctx parser.IYaml_select_fnContext) 
 	patternLabel := yctx.String_or_id().(*parser.String_or_idContext)
 	pattern := l.GetTextFromStringOrId(patternLabel)
 	if data, ok := l.values[id]; ok && data.dataType == STRING && len(pattern) != 0 {
-		yamls := strings.Split(data.value.(string), "\n---\n")
+		yamls := strings.Split(data.value.(string), yamlSeperator)
 		if index == -1 && len(yamls) != 1 {
 			return newErrHolder(fmt.Errorf("in case of multiyaml (len is %d) its important to define index of yaml for selection", len(yamls)))
 		}
@@ -785,17 +788,25 @@ func (l *KlangListener) handleAtom(ctx parser.IAtomContext) valHolder {
 func (l *KlangListener) handleKubectl_command(ctx parser.IKubectl_commandContext) valHolder {
 	switch v := ctx.(type) {
 	case *parser.ApplyKubectlCommandContext:
+		patterns := []string{"apiVersion", "kind", "metadata.name"}
 		namespace := "default"
 		if len(v.AllNs()) != 0 {
 			namespace = v.Ns(len(v.AllNs()) - 1).GetText()
+		}
+		updateConfig := ""
+		if len(v.AllKubernetes_object_config()) != 0 {
+			updateConfigObj := v.Kubernetes_object_config(len(v.AllKubernetes_object_config()) - 1).(*parser.Kubernetes_object_configContext)
+			updateConfig = l.GetTextFromStringOrId(updateConfigObj.String_or_id().(*parser.String_or_idContext))
 		}
 		fNames := v.AllString_or_id()
 		k := NewKubectl()
 		var resources []Resource
 		returnVal := true
 		for _, fName := range fNames {
+			initialManifest := l.GetTextFromStringOrId(fName.(*parser.String_or_idContext))
+			finalManifest := updateMultipleKubernetesObjectsYaml(updateConfig, initialManifest, patterns)
 			ar := ApplyRequest{
-				Manifest:  l.GetTextFromStringOrId(fName.(*parser.String_or_idContext)),
+				Manifest:  finalManifest,
 				Namespace: namespace,
 				Force:     nil,
 				Validate:  nil,
@@ -1054,4 +1065,18 @@ func (l *KlangListener) resolveResource(val parser.IResourceContext) string {
 		return rc.PATH().GetText()
 	}
 	return ""
+}
+
+func updateMultipleKubernetesObjectsYaml(from, to string, patterns []string) string {
+	tos := strings.Split(to, yamlSeperator)
+	froms := strings.Split(from, yamlSeperator)
+	var outs []string
+	for i, _ := range tos {
+		t := tos[i]
+		for _, f := range froms {
+			t = updateKubernetesObjectsYaml(f, t, patterns)
+		}
+		outs = append(outs, t)
+	}
+	return strings.Join(outs, yamlSeperator)
 }
