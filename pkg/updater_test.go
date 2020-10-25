@@ -19,6 +19,53 @@ package pkg
 import "testing"
 
 func Test_updateKubernetesObjectsJson(t *testing.T) {
+	to := `
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "test-cm",
+    "namespace": "dev",
+    "labels": {
+      "app.kubernetes.io/instance": "my-app"
+    }
+  },
+  "data": {
+    "name": "abc"
+  }
+}
+`
+	from := `
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "test-cm"
+  },
+  "update": {
+    "data": {
+      "name": "def"
+    }
+  }
+}
+`
+	want := `
+{
+  "apiVersion": "v1",
+  "kind": "ConfigMap",
+  "metadata": {
+    "name": "test-cm",
+    "namespace": "dev",
+    "labels": {
+      "app.kubernetes.io/instance": "my-app"
+    }
+  },
+  "data": {
+    "name": "def"
+  }
+}
+`
+	patterns := []string{"apiVersion", "kind", "metadata.name"}
 	type args struct {
 		from     string
 		to       string
@@ -29,7 +76,15 @@ func Test_updateKubernetesObjectsJson(t *testing.T) {
 		args args
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "json merge",
+			args: args{
+				from:     from,
+				to:       to,
+				patterns: patterns,
+			},
+			want: want,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -41,6 +96,30 @@ func Test_updateKubernetesObjectsJson(t *testing.T) {
 }
 
 func Test_updateKubernetesObjectsYaml(t *testing.T) {
+	to := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  namespace: dev
+  labels:
+    app.kubernetes.io/instance: my-app
+data:
+  name: abc
+`
+	from := `
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm
+  namespace: dev
+  labels:
+    app.kubernetes.io/instance: my-app
+update:
+  data:
+    name: def
+`
+	patterns := []string{"apiVersion", "kind", "metadata.name"}
 	type args struct {
 		from     string
 		to       string
@@ -51,7 +130,14 @@ func Test_updateKubernetesObjectsYaml(t *testing.T) {
 		args args
 		want string
 	}{
-		// TODO: Add test cases.
+		{
+			name: "yaml merge",
+			args: args{
+				from:     from,
+				to:       to,
+				patterns: patterns,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
