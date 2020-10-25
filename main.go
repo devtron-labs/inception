@@ -46,8 +46,6 @@ func init() {
 }
 
 func main() {
-	//pkg.NewKlangListener()
-	//os.Exit(0)
 	var metricsAddr string
 	var enableLeaderElection bool
 	flag.StringVar(&metricsAddr, "metrics-addr", ":8080", "The address the metric endpoint binds to.")

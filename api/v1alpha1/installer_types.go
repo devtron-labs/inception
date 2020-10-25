@@ -95,7 +95,7 @@ type InstallerCondition struct {
 // suffix "Error" means error condition
 // suffix "Warning" means warning condition
 // suffix "Info" means informational condition
-type InstallerConditionType = string
+type InstallerConditionType string
 
 const (
 	// InstallerConditionDeletionError indicates that controller failed to delete application
