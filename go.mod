@@ -45,4 +45,5 @@ replace (
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.18.8
 	k8s.io/metrics => k8s.io/metrics v0.18.8
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.18.8
+	//github.com/devtron-labs/inception/pkg => /Users/nishant/go/src/github.com/devtron-labs/inception/pkg
 )
