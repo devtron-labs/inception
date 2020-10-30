@@ -71,21 +71,25 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 	updated := false
 	if hasURLChanged(installer) {
+		fmt.Println("url changed")
 		installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeOutOfSync
 		installer.Status.Sync.URL = installer.Spec.URL
 		updated = true
 	} else if shouldDownload(installer) {
+		fmt.Println("should download")
 		err := r.sync(installer)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
 		updated = true
 	} else if shouldApply(installer) {
+		fmt.Println("applying")
 		r.apply(installer)
 		updated = true
 	}
 
 	if updated {
+		fmt.Println("updating")
 		err = r.Client.Update(context.Background(), installer)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -208,7 +212,7 @@ func shouldDownload(installer *installerv1alpha1.Installer) bool {
 }
 
 func shouldApply(installer *installerv1alpha1.Installer) bool {
-	if installer.Status.Sync.Status == installerv1alpha1.SyncStatusCodeSynced {
+	if installer.Status.Sync.Status == installerv1alpha1.SyncStatusCodeDownloaded {
 		return true
 	}
 	return false
