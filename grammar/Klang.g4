@@ -16,6 +16,7 @@ stat
  | yaml_delete_fn
  | if_stat
  | while_stat
+ | sleep_fn
  | log
  | OTHER {fmt.Println("unknown char: " + $OTHER.text);}
  ;
@@ -43,6 +44,10 @@ yaml_edit_fn
 
 yaml_delete_fn
  : YAMLDELETE OPAR ID COMMA string_or_id (COMMA NUMBER)? CPAR SCOL
+ ;
+
+sleep_fn
+ : SLEEP OPAR NUMBER CPAR SCOL
  ;
 
 if_stat
@@ -222,6 +227,7 @@ YAMLEDIT : 'yamlEdit';
 YAMLDELETE: 'yamlDelete';
 SHELLSCRIPT : 'shellScript';
 DOWNLOAD: 'download';
+SLEEP: 'sleep';
 
 ID
  : [a-zA-Z_] [a-zA-Z_0-9]*

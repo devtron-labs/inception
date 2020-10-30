@@ -74,6 +74,12 @@ func (s *BaseKlangListener) EnterYaml_delete_fn(ctx *Yaml_delete_fnContext) {}
 // ExitYaml_delete_fn is called when production yaml_delete_fn is exited.
 func (s *BaseKlangListener) ExitYaml_delete_fn(ctx *Yaml_delete_fnContext) {}
 
+// EnterSleep_fn is called when production sleep_fn is entered.
+func (s *BaseKlangListener) EnterSleep_fn(ctx *Sleep_fnContext) {}
+
+// ExitSleep_fn is called when production sleep_fn is exited.
+func (s *BaseKlangListener) ExitSleep_fn(ctx *Sleep_fnContext) {}
+
 // EnterIf_stat is called when production if_stat is entered.
 func (s *BaseKlangListener) EnterIf_stat(ctx *If_statContext) {}
 

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	"github.com/devtron-labs/inception/pkg/parser"
+	"io/ioutil"
 	"testing"
 )
 
@@ -598,7 +599,15 @@ y = x;
 func TestKlangListener_handlekubectlget(t *testing.T) {
 	d := `x = kubectl get -n dev cm/test-cm;
 z = "metadata.name";
-y = jsonSelect(x, z);`
+y = jsonSelect(x, z);
+if !x {
+  log("missing");
+}
+`
+	a := `items.#(metadata.labels.app\.kubernetes\.io/name=="argocd-server").metadata.name`
+	e := `x = kubectl get -n devtroncd po;
+z = jsonSelect(x, `
+	e = e + "`"+a+"`);"
 	fmt.Printf("%s", d)
 	type fields struct {
 		input  string
@@ -620,7 +629,21 @@ y = jsonSelect(x, z);`
 					"y": {
 						dataType: "STRING",
 						name:     "y",
-						value:    "test-cm2",
+						value:    "test-cm",
+					},
+				},
+			},
+			args: args{},
+		},
+		{
+			name: "kubectl get multi",
+			fields: fields{
+				input: e,
+				values: map[string]valHolder{
+					"y": {
+						dataType: "STRING",
+						name:     "y",
+						value:    "test-cm",
 					},
 				},
 			},
@@ -634,7 +657,7 @@ y = jsonSelect(x, z);`
 				m := map[string]valHolder{
 					"y": d,
 				}
-				if diff := compare(tt.fields.values, m); !diff {
+				if diff := compare(tt.fields.values, m); diff {
 					t.Errorf("expected %+v, found %+v\n", tt.fields.values, r.Values())
 				}
 			} else {
@@ -857,7 +880,9 @@ o1 = yamlSelect(a, k, 0) + "/" + yamlSelect(a, z, 0);
 k2 = yamlSelect(a, k, 1);
 n2 = yamlSelect(a, z, 1);
 o2 = k2 + "/" + n2;
-pa = kubectl patch -n dev k2 n2 --type "application/merge-patch+json" -p '{"data":{"age":"36"}}';
+age = "36";
+pla = '{"data":{"age":"' + age + '"}}';
+pa = kubectl patch -n dev k2 n2 --type "application/merge-patch+json" -p pla;
 fo = kubectl get -n dev o1 o2;
 selector = 'items.#(metadata.name="'+n2+'").data.age';
 age = jsonSelect(fo, selector);
@@ -877,9 +902,60 @@ age = jsonSelect(fo, selector);
 		args   args
 	}{
 		{
-			name: "kubectl patch",
+			name: "kubectl integration",
 			fields: fields{
 				input: d,
+				values: map[string]valHolder{
+					"age": {
+						dataType: "STRING",
+						name:     "age",
+						value:    "36",
+					},
+				},
+			},
+			args: args{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := setup(tt.fields.input)
+			age := r.values["age"]
+			m := map[string]valHolder{
+				"age": age,
+			}
+			if diff := compare(tt.fields.values, m); !diff {
+				t.Errorf("expected %+v, found %+v\n", tt.fields.values, r.Values())
+			}
+		})
+	}
+}
+
+func TestKlangListener_temp(t *testing.T) {
+//	base64DecoderPrefix := `#!/bin/bash
+//echo -n "`
+//	base64DecoderSuffix := `" | base64 -d`
+	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/test-script")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf("%s", data)
+	type fields struct {
+		input  string
+		values map[string]valHolder
+	}
+	type args struct {
+		ctx *parser.AssignmentContext
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "kubectl temp",
+			fields: fields{
+				input: string(data),
 				values: map[string]valHolder{
 					"age": {
 						dataType: "STRING",
@@ -908,7 +984,7 @@ age = jsonSelect(fo, selector);
 func TestKlangListener_handleShellScript(t *testing.T) {
 	d := `
 #!/bin/bash
-echo "hello"`
+echo 'hello' | base64`
 	d = "a = shellScript `" + d + "`;"
 	fmt.Printf("%s", d)
 	type fields struct {

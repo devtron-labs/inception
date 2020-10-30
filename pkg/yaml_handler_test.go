@@ -23,8 +23,15 @@ import (
 
 func TestYamlSelect(t *testing.T) {
 	yml := `
-name:
-  first: abc
+items:
+- metadata:
+    labels:
+      first: abc
+    name: efg
+- metadata:
+    labels:
+      first: def
+    name: hij
 `
 	type args struct {
 		yml     string
@@ -39,11 +46,11 @@ name:
 			name: "yaml select",
 			args: args{
 				yml:     yml,
-				pattern: "name.first",
+				pattern: `items.#(metadata.labels.first="def").metadata.name`,
 			},
 			want: valHolder{
 				dataType: STRING,
-				value:    "abc",
+				value:    "hij",
 			},
 		},
 	}

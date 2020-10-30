@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/cmd/util"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -75,10 +76,10 @@ func (k *kubectl) GetResource(ctx context.Context, r *GetRequest) (*ManifestResp
 	if err != nil {
 		return nil, err
 	}
-	obj, err = replaceSecretValues(obj)
-	if err != nil {
-		return nil, err
-	}
+	//obj, err = replaceSecretValues(obj)
+	//if err != nil {
+	//	return nil, err
+	//}
 	data, err := json.Marshal(obj.Object)
 	if err != nil {
 		return nil, err
@@ -172,6 +173,31 @@ func (k *kubectl) ApplyResource(ctx context.Context, r *ApplyRequest) ([]ApplyRe
 		}
 	}
 	return responses, nil
+}
+
+func (k *kubectl) ListResources(ctx context.Context, r *ListRequest) (*ListResponse, error) {
+	dynamicIf, err := dynamic.NewForConfig(k.restConfig)
+	if err != nil {
+		return nil, err
+	}
+	resourceList, err := dynamicIf.Resource(r.GroupVersionResource).Namespace(r.Namespace).List(ctx, r.ListOptions)
+	if err != nil {
+		return nil, err
+	}
+	var manifests []string
+	for i, _ := range resourceList.Items {
+		item := &resourceList.Items[i]
+		//item, err := replaceSecretValues(item)
+		//if err != nil {
+		//	return nil, err
+		//}
+		data, err := json.Marshal(item.Object)
+		if err != nil {
+			return nil, err
+		}
+		manifests = append(manifests, string(data))
+	}
+	return &ListResponse{Manifests: manifests}, nil
 }
 
 // https://github.com/argoproj/gitops-engine/blob/master/pkg/sync/sync_context.go

@@ -34,6 +34,9 @@ type KlangListener interface {
 	// EnterYaml_delete_fn is called when entering the yaml_delete_fn production.
 	EnterYaml_delete_fn(c *Yaml_delete_fnContext)
 
+	// EnterSleep_fn is called when entering the sleep_fn production.
+	EnterSleep_fn(c *Sleep_fnContext)
+
 	// EnterIf_stat is called when entering the if_stat production.
 	EnterIf_stat(c *If_statContext)
 
@@ -198,6 +201,9 @@ type KlangListener interface {
 
 	// ExitYaml_delete_fn is called when exiting the yaml_delete_fn production.
 	ExitYaml_delete_fn(c *Yaml_delete_fnContext)
+
+	// ExitSleep_fn is called when exiting the sleep_fn production.
+	ExitSleep_fn(c *Sleep_fnContext)
 
 	// ExitIf_stat is called when exiting the if_stat production.
 	ExitIf_stat(c *If_statContext)

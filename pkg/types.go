@@ -17,6 +17,7 @@ limitations under the License.
 package pkg
 
 import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -50,6 +51,16 @@ type ApplyRequest struct {
 	Namespace string `protobuf:"bytes,2,req,name=namespace" json:"namespace,omitempty"`
 	Force     *bool  `protobuf:"bytes,3,req,name=force" json:"force,omitempty"`
 	Validate  *bool  `protobuf:"bytes,4,req,name=validate" json:"validate,omitempty"`
+}
+
+type ListRequest struct {
+	Namespace            string                      `protobuf:"bytes,1,req,name=namespace" json:"namespace,omitempty"`
+	GroupVersionResource schema.GroupVersionResource `protobuf:"bytes,2,req,name=groupVersionResource" json:"groupVersionResource,omitempty"`
+	metav1.ListOptions   `json:",inline"`
+}
+
+type ListResponse struct {
+	Manifests []string `protobuf:"bytes,1,req,name=manifests" json:"manifests,omitempty"`
 }
 
 type ApplyResponse struct {

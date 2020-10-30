@@ -27,6 +27,7 @@ import (
 	"io"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"net/http"
 	"os"
 	"os/exec"
@@ -944,6 +945,7 @@ func (l *KlangListener) handleKubectl_command(ctx parser.IKubectl_commandContext
 			}
 			return newErrHolder(fmt.Errorf(strings.Join(errs, "\n")))
 		}
+		isList := false
 		if len(a.ResourceTuples()) != 0 {
 			rts := a.ResourceTuples()
 			for _, rt := range rts {
@@ -951,23 +953,35 @@ func (l *KlangListener) handleKubectl_command(ctx parser.IKubectl_commandContext
 				if err != nil {
 					return newErrHolder(err)
 				}
-				gr := GetRequest{
-					Namespace:        namespace,
-					GroupVersionKind: resource.GroupVersionKind,
+				if len(rt.Name) == 0 {
+					lr := ListRequest{
+						Namespace:            namespace,
+						GroupVersionResource: resource.Resource,
+						ListOptions:          metav1.ListOptions{},
+					}
+					manifests, err := k.ListResources(context.Background(), &lr)
+					if err != nil {
+						return newErrHolder(err)
+					}
+					resp = append(resp, manifests.Manifests...)
+					isList = true
+				} else {
+					gr := GetRequest{
+						Namespace:        namespace,
+						GroupVersionKind: resource.GroupVersionKind,
+						Name: rt.Name,
+					}
+					mresp, err := k.GetResource(context.Background(), &gr)
+					if err != nil {
+						//TODO: return error along with retrieved manifests
+						return newErrHolder(err)
+					}
+					resp = append(resp, mresp.Manifest)
 				}
-				if len(rt.Name) > 0 {
-					gr.Name = rt.Name
-				}
-				mresp, err := k.GetResource(context.Background(), &gr)
-				if err != nil {
-					//TODO: return error along with retrieved manifests
-					return newErrHolder(err)
-				}
-				resp = append(resp, mresp.Manifest)
 			}
 		}
 		out := strings.Join(resp, ",")
-		if len(resp) > 1 {
+		if len(resp) > 1 || isList {
 			out = "{\"apiVersion\": \"v1\",    \"items\": [" + out + "], \"kind\": \"List\", \"metadata\": { \"resourceVersion\": \"\", \"selfLink\": \"\" }}"
 		}
 		return newStringValHolder(out)
