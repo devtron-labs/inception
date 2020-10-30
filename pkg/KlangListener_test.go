@@ -607,7 +607,7 @@ if !x {
 	a := `items.#(metadata.labels.app\.kubernetes\.io/name=="argocd-server").metadata.name`
 	e := `x = kubectl get -n devtroncd po;
 z = jsonSelect(x, `
-	e = e + "`"+a+"`);"
+	e = e + "`" + a + "`);"
 	fmt.Printf("%s", d)
 	type fields struct {
 		input  string
@@ -931,9 +931,9 @@ age = jsonSelect(fo, selector);
 }
 
 func TestKlangListener_temp(t *testing.T) {
-//	base64DecoderPrefix := `#!/bin/bash
-//echo -n "`
-//	base64DecoderSuffix := `" | base64 -d`
+	//	base64DecoderPrefix := `#!/bin/bash
+	//echo -n "`
+	//	base64DecoderSuffix := `" | base64 -d`
 	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/test-script")
 	if err != nil {
 		panic(err)

@@ -969,7 +969,7 @@ func (l *KlangListener) handleKubectl_command(ctx parser.IKubectl_commandContext
 					gr := GetRequest{
 						Namespace:        namespace,
 						GroupVersionKind: resource.GroupVersionKind,
-						Name: rt.Name,
+						Name:             rt.Name,
 					}
 					mresp, err := k.GetResource(context.Background(), &gr)
 					if err != nil {
