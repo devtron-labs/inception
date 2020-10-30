@@ -145,6 +145,7 @@ func newNilValHolder() valHolder {
 
 func newErrHolder(err error) valHolder {
 	fmt.Printf("{\"err\": \"%s\"}\n", err.Error())
+	fmt.Printf("error: %+v\n", err)
 	return valHolder{dataType: ERR, value: err}
 }
 
