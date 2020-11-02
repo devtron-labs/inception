@@ -563,6 +563,10 @@ func (l *KlangListener) handleYaml_select_fn(ctx parser.IYaml_select_fnContext) 
 
 func (l *KlangListener) handleCondition_block(ctx *parser.Condition_blockContext) valHolder {
 	res := l.handleExpr(ctx.Expr())
+	if res.dataType != BOOLEAN {
+		res = l.isFalse(res)
+		res = newBooleanValHolder(!res.value.(bool))
+	}
 	//fmt.Printf("final result %v\n", res)
 	return res
 }
