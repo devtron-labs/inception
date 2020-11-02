@@ -446,7 +446,7 @@ func (l *KlangListener) handleYaml_delete_fn(ctx *parser.Yaml_delete_fnContext) 
 	}
 	yaml.value = strings.Join(outYamls, yamlSeperator)
 	l.values[yaml.name] = yaml
-	fmt.Printf("delete pattern %s, out %+v\n", pattern, yaml)
+	//fmt.Printf("delete pattern %s, out %+v\n", pattern, yaml)
 	return newEmptyHolder()
 }
 
@@ -491,7 +491,7 @@ func (l *KlangListener) handleYaml_edit_fn(ctx *parser.Yaml_edit_fnContext) valH
 	}
 	yaml.value = strings.Join(outYamls, yamlSeperator)
 	l.values[yaml.name] = yaml
-	fmt.Printf("val %+v, pattern %s, out %+v\n", val, pattern, yaml)
+	//fmt.Printf("val %+v, pattern %s, out %+v\n", val, pattern, yaml)
 	return newEmptyHolder()
 }
 

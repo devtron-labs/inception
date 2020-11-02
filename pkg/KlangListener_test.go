@@ -934,7 +934,7 @@ func TestKlangListener_temp(t *testing.T) {
 	//	base64DecoderPrefix := `#!/bin/bash
 	//echo -n "`
 	//	base64DecoderSuffix := `" | base64 -d`
-	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/test-script")
+	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/devtron-installation-script/installation-script")
 	if err != nil {
 		panic(err)
 	}
