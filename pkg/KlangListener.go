@@ -704,6 +704,9 @@ func (l *KlangListener) handleExpr(ctx parser.IExprContext) valHolder {
 }
 
 func (l *KlangListener) isFalse(r valHolder) valHolder {
+	if r.value == nil {
+		return newBooleanValHolder(true)
+	}
 	switch r.dataType {
 	case INT:
 		return newBooleanValHolder(r.value.(int64) == 0)
