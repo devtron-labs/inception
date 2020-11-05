@@ -16,6 +16,11 @@ limitations under the License.
 
 package pkg
 
+import (
+	"fmt"
+	"strconv"
+)
+
 func mathematicalIntIntOperation(lhs, rhs valHolder, operator MathematicalOperator) valHolder {
 	lv := lhs.value.(int64)
 	rv := rhs.value.(int64)
@@ -92,6 +97,60 @@ func mathematicalStringStringOperation(lhs, rhs valHolder, operator Mathematical
 	switch operator {
 	case PLUS:
 		return newStringValHolder(lv + rv)
+	default:
+		return valHolder{}
+	}
+}
+
+func mathematicalStringIntOperation(lhs, rhs valHolder, operator MathematicalOperator) valHolder {
+	lv := lhs.value.(string)
+	rv := rhs.value.(int)
+	rvs := strconv.Itoa(rv)
+	switch operator {
+	case PLUS:
+		return newStringValHolder(lv + rvs)
+	default:
+		return valHolder{}
+	}
+}
+
+func mathematicalStringFloatOperation(lhs, rhs valHolder, operator MathematicalOperator) valHolder {
+	lv := lhs.value.(string)
+	rv := rhs.value.(float64)
+	rvs := fmt.Sprintf("%f", rv)
+	if float64(int64(rv)) == rv {
+		rvs = fmt.Sprintf("%d", int64(rv))
+	}
+	switch operator {
+	case PLUS:
+		return newStringValHolder(lv + rvs)
+	default:
+		return valHolder{}
+	}
+}
+
+func mathematicalIntStringOperation(lhs, rhs valHolder, operator MathematicalOperator) valHolder {
+	rv := rhs.value.(string)
+	lv := lhs.value.(int)
+	lvs := strconv.Itoa(lv)
+	switch operator {
+	case PLUS:
+		return newStringValHolder(lvs + rv)
+	default:
+		return valHolder{}
+	}
+}
+
+func mathematicalFloatStringOperation(lhs, rhs valHolder, operator MathematicalOperator) valHolder {
+	rv := rhs.value.(string)
+	lv := lhs.value.(float64)
+	lvs := fmt.Sprintf("%f", lv)
+	if float64(int64(lv)) == lv {
+		lvs = fmt.Sprintf("%d", int64(lv))
+	}
+	switch operator {
+	case PLUS:
+		return newStringValHolder(lvs + rv)
 	default:
 		return valHolder{}
 	}

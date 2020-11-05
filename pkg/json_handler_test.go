@@ -20,7 +20,7 @@ func TestJsonSelect(t *testing.T) {
 			name: "json select",
 			args: args{
 				json:    input,
-				pattern: `items.#(metadata.labels.app\.kubernetes\.io/name=="argocd-server").metadata.name`,
+				pattern: `items.#(metadata.labels.app\.kubernetes\.io/name%"argocd-serv*").metadata.name`,
 			},
 			want: newStringValHolder("argocd-server-74b7b94945-tq6wc"),
 		},

@@ -299,12 +299,13 @@ func (l *KlangListener) handleAssignment(ctx *parser.AssignmentContext) {
 }
 
 // ExitShell_script is called when production shell_script is exited.
-func (l *KlangListener) ExitShell_script(ctx *parser.Shell_scriptContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleShell_script(ctx)
-}
+// This is commented as shellScript is type of expr
+//func (l *KlangListener) ExitShell_script(ctx *parser.Shell_scriptContext) {
+//	if l.ifWhileCount != 0 {
+//		return
+//	}
+//	l.handleShell_script(ctx)
+//}
 
 func (l *KlangListener) handleShell_script(ctx *parser.Shell_scriptContext) valHolder {
 	script := l.GetTextFromStringOrId(ctx.String_or_id().(*parser.String_or_idContext))
@@ -395,6 +396,9 @@ func (l *KlangListener) GetTextFromStringOrId(stringOrId *parser.String_or_idCon
 	if stringOrId.ID() != nil {
 		if pval, ok := l.values[stringOrId.ID().GetText()]; ok {
 			if pval.dataType == ERR {
+				return ""
+			}
+			if pval.value == nil {
 				return ""
 			}
 			pattern = pval.value.(string)
@@ -664,7 +668,19 @@ func (l *KlangListener) handleExpr(ctx parser.IExprContext) valHolder {
 		if lhs.dataType == STRING && rhs.dataType == STRING {
 			return mathematicalStringStringOperation(lhs, rhs, op)
 		}
-		return valHolder{}
+		if lhs.dataType == STRING && rhs.dataType == INT {
+			return mathematicalStringIntOperation(lhs, rhs, op)
+		}
+		if lhs.dataType == STRING && rhs.dataType == FLOAT {
+			return mathematicalStringFloatOperation(lhs, rhs, op)
+		}
+		if lhs.dataType == INT && rhs.dataType == STRING {
+			return mathematicalIntStringOperation(lhs, rhs, op)
+		}
+		if lhs.dataType == FLOAT && rhs.dataType == STRING {
+			return mathematicalFloatStringOperation(lhs, rhs, op)
+		}
+		return newEmptyHolder()
 	case *parser.MultiplicationExprContext:
 		op := MULT
 		if v.DIV() != nil {
@@ -688,19 +704,18 @@ func (l *KlangListener) handleExpr(ctx parser.IExprContext) valHolder {
 		if lhs.dataType == FLOAT && rhs.dataType == INT {
 			return mathematicalFloatIntOperation(lhs, rhs, op)
 		}
-		return valHolder{}
+		return newEmptyHolder()
 	case *parser.ShellScriptContext:
 		return l.handleShell_script(v.Shell_script().(*parser.Shell_scriptContext))
 	case *parser.DownloadFnContext:
 		return l.handleDownload_fn(v.Download_fn().(*parser.Download_fnContext))
-		//TODO: handledownload
 	case *parser.NotExprContext:
 		r := l.handleExpr(v.Expr())
 		return l.isFalse(r)
 	default:
 		break
 	}
-	return valHolder{}
+	return newEmptyHolder()
 }
 
 func (l *KlangListener) isFalse(r valHolder) valHolder {

@@ -87,7 +87,7 @@ func toValHolder(result gjson.Result) valHolder {
 	case gjson.Number:
 		return valHolder{
 			value:    result.Num,
-			dataType: "STRING",
+			dataType: "FLOAT",
 		}
 	case gjson.String:
 		return valHolder{
