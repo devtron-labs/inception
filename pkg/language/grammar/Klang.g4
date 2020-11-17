@@ -14,9 +14,14 @@ stat
  | json_delete_fn
  | yaml_edit_fn
  | yaml_delete_fn
+ | kube_json_delete_fn
+ | kube_json_edit_fn
+ | kube_yaml_delete_fn
+ | kube_yaml_edit_fn
  | if_stat
  | while_stat
  | sleep_fn
+ | exit_fn
  | log
  | OTHER {fmt.Println("unknown char: " + $OTHER.text);}
  ;
@@ -46,8 +51,34 @@ yaml_delete_fn
  : YAMLDELETE OPAR ID COMMA string_or_id (COMMA NUMBER)? CPAR SCOL
  ;
 
+kube_json_edit_fn
+ : KUBEJSONEDIT OPAR ID COMMA string_or_id COMMA expr (COMMA string_or_id)? CPAR SCOL
+ ;
+
+kube_json_delete_fn
+ : KUBEJSONDELETE OPAR ID COMMA filter COMMA pattern CPAR SCOL
+ | KUBEJSONDELETE OPAR ID COMMA pattern COMMA filter CPAR SCOL
+ | KUBEJSONDELETE OPAR ID COMMA filter CPAR SCOL
+ | KUBEJSONDELETE OPAR ID COMMA pattern CPAR SCOL
+ ;
+
+kube_yaml_edit_fn
+ : KUBEYAMLEDIT OPAR ID COMMA string_or_id COMMA expr (COMMA string_or_id)? CPAR SCOL
+ ;
+
+kube_yaml_delete_fn
+ : KUBEYAMLDELETE OPAR ID COMMA filter  COMMA pattern CPAR SCOL
+ | KUBEYAMLDELETE OPAR ID COMMA pattern COMMA filter CPAR SCOL
+ | KUBEYAMLDELETE OPAR ID COMMA filter CPAR SCOL
+ | KUBEYAMLDELETE OPAR ID COMMA pattern CPAR SCOL
+ ;
+
 sleep_fn
- : SLEEP OPAR NUMBER CPAR SCOL
+ : SLEEP NUMBER SCOL
+ ;
+
+exit_fn
+ : EXIT NUMBER SCOL
  ;
 
 if_stat
@@ -94,6 +125,11 @@ load_fn
  : LOAD OPAR string_or_id (COMMA STRING)? CPAR
  ;
 
+stepInfo
+ : STEPINFO STRING SCOL
+ | STEPINFO RAW_STRING_LIT SCOL
+ ;
+
 ns
  : string_or_id
  | PATH
@@ -117,6 +153,14 @@ resource
 
 kubernetes_object_config
  : string_or_id
+ ;
+
+filter
+ : FILTER EQ string_or_id
+ ;
+
+pattern
+ : PATTERN EQ string_or_id
  ;
 
 expr
@@ -219,15 +263,23 @@ PATCHLOAD: '-p';
 UPDATELOAD: '-u';
 JSONPATH : '-jsonpath';
 LOAD : 'load';
+EXIT : 'exit';
 JSONSELECT : 'jsonSelect';
 JSONEDIT : 'jsonEdit';
 JSONDELETE: 'jsonDelete';
 YAMLSELECT : 'yamlSelect';
 YAMLEDIT : 'yamlEdit';
 YAMLDELETE: 'yamlDelete';
+KUBEJSONEDIT : 'kubeJsonEdit';
+KUBEJSONDELETE: 'kubeJsonDelete';
+KUBEYAMLEDIT : 'kubeYamlEdit';
+KUBEYAMLDELETE: 'kubeYamlDelete';
 SHELLSCRIPT : 'shellScript';
 DOWNLOAD: 'download';
 SLEEP: 'sleep';
+STEPINFO: 'stepInfo';
+FILTER: 'filter';
+PATTERN: 'pattern';
 
 ID
  : [a-zA-Z_] [a-zA-Z_0-9]*

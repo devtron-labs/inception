@@ -18,7 +18,7 @@ package main
 
 import (
 	"flag"
-	"github.com/devtron-labs/inception/pkg"
+	"github.com/devtron-labs/inception/pkg/language"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -72,7 +72,7 @@ func main() {
 		Client: mgr.GetClient(),
 		Log:    ctrl.Log.WithName("controllers").WithName("Installer"),
 		Scheme: mgr.GetScheme(),
-		Mapper: pkg.NewMapperFactory(),
+		Mapper: language.NewMapperFactory(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Installer")
 		os.Exit(1)

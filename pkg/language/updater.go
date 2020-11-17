@@ -14,12 +14,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pkg
+package language
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/devtron-labs/inception/pkg/flatten"
+	"github.com/devtron-labs/inception/pkg/language/flatten"
 	"github.com/ghodss/yaml"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"

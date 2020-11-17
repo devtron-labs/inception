@@ -14,11 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package pkg
+package language
 
 import (
-	"github.com/ghodss/yaml"
 	"github.com/tidwall/gjson"
+	"sigs.k8s.io/yaml"
 )
 
 func YamlSelect(yml, pattern string) valHolder {

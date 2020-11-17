@@ -18,7 +18,7 @@ package controllers
 
 import (
 	installerv1alpha1 "github.com/devtron-labs/inception/api/v1alpha1"
-	"github.com/devtron-labs/inception/pkg"
+	"github.com/devtron-labs/inception/pkg/language"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -28,7 +28,7 @@ import (
 
 func TestInstallerReconciler_apply(t *testing.T) {
 	scheme := runtime.NewScheme()
-	mapper := pkg.NewMapperFactory()
+	mapper := language.NewMapperFactory()
 	config := ctrl.GetConfigOrDie()
 	mgr, err := ctrl.NewManager(config, ctrl.Options{Scheme: scheme})
 	installer := &installerv1alpha1.Installer{
@@ -48,7 +48,7 @@ func TestInstallerReconciler_apply(t *testing.T) {
 		Client client.Client
 		Log    logr.Logger
 		Scheme *runtime.Scheme
-		Mapper *pkg.Mapper
+		Mapper *language.Mapper
 	}
 	type args struct {
 		installer *installerv1alpha1.Installer

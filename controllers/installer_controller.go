@@ -22,8 +22,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
-	"github.com/devtron-labs/inception/pkg"
-	"github.com/devtron-labs/inception/pkg/parser"
+	"github.com/devtron-labs/inception/pkg/language"
+	parser2 "github.com/devtron-labs/inception/pkg/language/parser"
 	"io"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,7 +45,7 @@ type InstallerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 	//Instead of KLangListener
-	Mapper *pkg.Mapper
+	Mapper *language.Mapper
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
@@ -112,16 +112,16 @@ func (r *InstallerReconciler) sync(installer *installerv1alpha1.Installer) error
 	return nil
 }
 
-func (r *InstallerReconciler) apply(installer *installerv1alpha1.Installer) *pkg.KlangListener {
+func (r *InstallerReconciler) apply(installer *installerv1alpha1.Installer) *language.KlangListener {
 	url := installer.Status.Sync.URL
 	data := installer.Status.Sync.Data
 	//parse and process data
 	is := antlr.NewInputStream(data)
-	lexer := parser.NewKlangLexer(is)
+	lexer := parser2.NewKlangLexer(is)
 	stream := antlr.NewCommonTokenStream(lexer, antlr.TokenDefaultChannel)
-	p := parser.NewKlangParser(stream)
+	p := parser2.NewKlangParser(stream)
 	p.BuildParseTrees = true
-	listener := pkg.NewKlangListener(r.Mapper)
+	listener := language.NewKlangListener(r.Mapper)
 	antlr.ParseTreeWalkerDefault.Walk(listener, p.Parse())
 	//TODO: Use r.Parser.Values() to check data and get resources
 	//Update the status of resources
@@ -149,13 +149,13 @@ func (r *InstallerReconciler) apply(installer *installerv1alpha1.Installer) *pkg
 	return listener
 }
 
-func toSyncStatus(code pkg.ResourceSyncStatusCode) installerv1alpha1.SyncStatusCode {
+func toSyncStatus(code language.ResourceSyncStatusCode) installerv1alpha1.SyncStatusCode {
 	switch code {
-	case pkg.ResourceSyncStatusCodeOutOfSync:
+	case language.ResourceSyncStatusCodeOutOfSync:
 		return installerv1alpha1.SyncStatusCodeOutOfSync
-	case pkg.ResourceSyncStatusCodeSynced:
+	case language.ResourceSyncStatusCodeSynced:
 		return installerv1alpha1.SyncStatusCodeSynced
-	case pkg.ResourceSyncStatusCodeUnknown:
+	case language.ResourceSyncStatusCodeUnknown:
 		return installerv1alpha1.SyncStatusCodeUnknown
 	default:
 		return installerv1alpha1.SyncStatusCodeUnknown

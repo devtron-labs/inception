@@ -7,12 +7,14 @@ require (
 	github.com/argoproj/gitops-engine v0.1.3-0.20200904164417-c04f859da9b2
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.1.0
+	github.com/google/go-cmp v0.4.0
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/prometheus/common v0.4.1
 	github.com/sirupsen/logrus v1.6.0
 	github.com/tidwall/gjson v1.6.1
 	github.com/tidwall/sjson v1.1.1
+	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.8
 	k8s.io/apiextensions-apiserver v0.18.8
 	k8s.io/apimachinery v0.18.8
@@ -21,6 +23,7 @@ require (
 	k8s.io/kubectl v0.18.8
 	k8s.io/kubernetes v1.18.8
 	sigs.k8s.io/controller-runtime v0.6.2
+	sigs.k8s.io/yaml v1.2.0
 )
 
 replace (
@@ -45,5 +48,5 @@ replace (
 	k8s.io/legacy-cloud-providers => k8s.io/legacy-cloud-providers v0.18.8
 	k8s.io/metrics => k8s.io/metrics v0.18.8
 	k8s.io/sample-apiserver => k8s.io/sample-apiserver v0.18.8
-	//github.com/devtron-labs/inception/pkg => /Users/nishant/go/src/github.com/devtron-labs/inception/pkg
+//github.com/devtron-labs/inception/pkg => /Users/nishant/go/src/github.com/devtron-labs/inception/pkg
 )
