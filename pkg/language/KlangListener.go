@@ -29,11 +29,9 @@ import (
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"net/http"
 	"os"
 	"os/exec"
-	"sigs.k8s.io/yaml"
 	"strconv"
 	"strings"
 	"time"
@@ -203,6 +201,18 @@ func (l *KlangListener) handleStat(ctx parser.IStatContext) {
 	} else if ts.Yaml_delete_fn() != nil {
 		tya := ts.Yaml_delete_fn().(*parser.Yaml_delete_fnContext)
 		l.handleYaml_delete_fn(tya)
+	} else if  ts.Kube_json_delete_fn() != nil {
+		kjd := ts.Kube_json_delete_fn().(*parser.Kube_json_delete_fnContext)
+		l.handleKube_json_delete_fn(kjd)
+	} else if  ts.Kube_json_edit_fn() != nil {
+		kje := ts.Kube_json_edit_fn().(*parser.Kube_json_edit_fnContext)
+		l.handleKube_json_edit_fn(kje)
+	} else if  ts.Kube_yaml_delete_fn() != nil {
+		kyd := ts.Kube_yaml_delete_fn().(*parser.Kube_yaml_delete_fnContext)
+		l.handleKube_yaml_delete_fn(kyd)
+	} else if  ts.Kube_yaml_edit_fn() != nil {
+		kye := ts.Kube_yaml_edit_fn().(*parser.Kube_yaml_edit_fnContext)
+		l.handleKube_yaml_edit_fn(kye)
 	} else if ts.Sleep_fn() != nil {
 		ef := ts.Sleep_fn().(*parser.Sleep_fnContext)
 		l.handleSleep_fn(ef)
@@ -369,22 +379,11 @@ func (l *KlangListener) handleAssignment(ctx *parser.AssignmentContext) {
 	}
 }
 
-// ExitShell_script is called when production shell_script is exited.
-// This is commented as shellScript is type of expr
-//func (l *KlangListener) ExitShell_script(ctx *parser.Shell_scriptContext) {
-//	if l.ifWhileCount != 0 {
-//		return
-//	}
-//	l.handleShell_script(ctx)
-//}
-
 func (l *KlangListener) handleShell_script(ctx *parser.Shell_scriptContext) valHolder {
 	script := l.GetTextFromStringOrId(ctx.String_or_id().(*parser.String_or_idContext))
 	if len(script) == 0 {
 		return newEmptyHolder()
 	}
-	//TODO: go lang code to execute shell script
-	//TODO: write script to file and use file location
 	hasher := sha1.New()
 	hasher.Write([]byte(script))
 	hash := hex.EncodeToString(hasher.Sum(nil))
@@ -398,244 +397,6 @@ func (l *KlangListener) handleShell_script(ctx *parser.Shell_scriptContext) valH
 		return newErrHolder(err)
 	}
 	return newStringValHolder(string(out))
-}
-
-// ExitJson_delete_fn is called when production json_delete_fn is exited.
-func (l *KlangListener) ExitJson_delete_fn(ctx *parser.Json_delete_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleJson_delete_fn(ctx)
-}
-
-func (l *KlangListener) handleJson_delete_fn(ctx *parser.Json_delete_fnContext) valHolder {
-	json := l.values[ctx.ID().GetText()]
-	json = l.getValIfID(json)
-	if json.dataType != STRING || len(json.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("json should be string of non zero length %+v\n", json))
-	}
-	patternLabel := ctx.String_or_id().(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	res := JsonDelete(json.value.(string), pattern)
-	json.value = res.value
-	l.values[json.name] = json
-	return newEmptyHolder()
-}
-
-// ExitJsonselector_assignment is called when production jsonselector_assignment is exited.
-func (l *KlangListener) ExitJson_edit_fn(ctx *parser.Json_edit_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleJson_edit_fn(ctx)
-}
-
-func (l *KlangListener) handleJson_edit_fn(ctx *parser.Json_edit_fnContext) valHolder {
-	json := l.values[ctx.ID().GetText()]
-	json = l.getValIfID(json)
-	if json.dataType != STRING || len(json.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("json should be string of non zero length %+v\n", json))
-	}
-	valVh := l.handleExpr(ctx.Expr())
-	valVh = l.getValIfID(valVh)
-	if valVh.value == nil {
-		return newErrHolder(fmt.Errorf("value cannot be nil"))
-	}
-	val := valVh.value
-	patternLabel := ctx.String_or_id().(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	res := JsonEdit(json.value.(string), pattern, val)
-	json.value = res.value
-	l.values[json.name] = json
-	return newEmptyHolder()
-}
-
-func (l *KlangListener) handleJson_select_Fn(ctx parser.IJson_select_fnContext) valHolder {
-	jctx := ctx.(*parser.Json_select_fnContext)
-	id := jctx.ID().GetText()
-	patternLabel := jctx.String_or_id().(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	if data, ok := l.values[id]; ok && data.dataType == STRING && len(pattern) != 0 {
-		res := JsonSelect(data.value.(string), pattern)
-		return res
-	}
-	return newEmptyHolder()
-}
-
-// EnterKube_json_edit_fn is called when production kube_yaml_edit_fn is entered.
-func (l *KlangListener) EnterKube_json_edit_fn(ctx *parser.Kube_json_edit_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleKube_json_edit_fn(ctx)
-}
-
-func (l *KlangListener) handleKube_json_edit_fn(ctx *parser.Kube_json_edit_fnContext) valHolder {
-	json := l.values[ctx.ID().GetText()]
-	json = l.getValIfID(json)
-	if json.dataType != STRING || len(json.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("json should be string of non zero length %+v\n", json))
-	}
-	data := json.value.(string)
-	valVh := l.handleExpr(ctx.Expr())
-	valVh = l.getValIfID(valVh)
-	if valVh.value == nil {
-		return newErrHolder(fmt.Errorf("value cannot be nil"))
-	}
-	val := valVh.value
-	patternLabel := ctx.String_or_id(0).(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	filter := ""
-	if len(ctx.AllString_or_id()) > 1 {
-		filter = l.GetTextFromStringOrId(ctx.String_or_id(1).(*parser.String_or_idContext))
-	}
-	res := handleKubeJsonEdit(data, filter, pattern, val)
-	json.value = res.value
-	l.values[json.name] = json
-	return res
-}
-
-func handleKubeJsonEdit(data string, filter string, pattern string, value interface{}) valHolder {
-	obj := &unstructured.Unstructured{}
-	err := obj.UnmarshalJSON([]byte(data))
-	if err != nil {
-		return newStringValHolder(data)
-	}
-	if obj.IsList() {
-		objs, err := obj.ToList()
-		if err != nil {
-			log.Printf("error while converting to list %+v\n", err)
-		}
-		var items []interface{}
-		for _, o := range objs.Items {
-			resourceKey := kube.GetResourceKey(&o)
-			if len(filter) == 0 || (&resourceKey).String() == filter {
-				json, err := o.MarshalJSON()
-				if err != nil {
-					return newStringValHolder(data)
-				}
-				out := JsonEdit(string(json), pattern, value)
-				if out.dataType != STRING || out.value == nil {
-					return newStringValHolder(data)
-				}
-				oUnStruct := &unstructured.Unstructured{}
-				err = (oUnStruct).UnmarshalJSON([]byte(out.value.(string)))
-				if err != nil {
-					return newStringValHolder(data)
-				}
-				items = append(items, oUnStruct.Object)
-			} else {
-				//if filter is not matching then append
-				items = append(items, o.Object)
-			}
-		}
-		obj.Object["items"] = items
-		out, err := obj.MarshalJSON()
-		if err != nil {
-			return newStringValHolder(data)
-		}
-		return newStringValHolder(string(out))
-	} else {
-		resourceKey := kube.GetResourceKey(obj)
-		if len(filter) == 0 || (&resourceKey).String() == filter {
-			out := JsonEdit(data, pattern, value)
-			return out
-		} else {
-			return newStringValHolder(data)
-		}
-	}
-	return newStringValHolder(data)
-}
-
-// ExitJson_delete_fn is called when production json_delete_fn is exited.
-func (l *KlangListener) ExitKube_json_delete_fn(ctx *parser.Kube_json_delete_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleKube_json_delete_fn(ctx)
-}
-
-func (l *KlangListener) handleKube_json_delete_fn(ctx *parser.Kube_json_delete_fnContext) valHolder {
-	json := l.values[ctx.ID().GetText()]
-	json = l.getValIfID(json)
-	if json.dataType != STRING || len(json.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("json should be string of non zero length %+v\n", json))
-	}
-	data := json.value.(string)
-	pattern := ""
-	if ctx.Pattern() != nil {
-		pattern = ctx.Pattern().(*parser.PatternContext).String_or_id().GetText()
-	}
-	filter := ""
-	if ctx.Filter() != nil {
-		filter = ctx.Filter().(*parser.FilterContext).String_or_id().GetText()
-	}
-	res := handleKubeJsonDelete(data, filter, pattern)
-	json.value = res.value
-	l.values[json.name] = json
-	return res
-}
-
-func handleKubeJsonDelete(data string, filter string, pattern string) valHolder {
-	obj := &unstructured.Unstructured{}
-	err := obj.UnmarshalJSON([]byte(data))
-	if err != nil {
-		return newStringValHolder(data)
-	}
-	if obj.IsList() {
-		objs, err := obj.ToList()
-		if err != nil {
-			log.Printf("error while converting to list %+v\n", err)
-		}
-		var items []interface{}
-		for _, o := range objs.Items {
-			resourceKey := kube.GetResourceKey(&o)
-			if len(filter) == 0 || (&resourceKey).String() == filter {
-				if len(pattern) == 0 {
-					//If pattern is missing
-					//this object will not be appended in final result
-					continue
-				} else {
-					json, err := o.MarshalJSON()
-					if err != nil {
-						return newStringValHolder(data)
-					}
-					out := JsonDelete(string(json), pattern)
-					if out.dataType != STRING || out.value == nil {
-						return newStringValHolder(data)
-					}
-					oUnStruct := &unstructured.Unstructured{}
-					err = (oUnStruct).UnmarshalJSON([]byte(out.value.(string)))
-					if err != nil {
-						return newStringValHolder(data)
-					}
-					items = append(items, oUnStruct.Object)
-				}
-			} else {
-				//if filter is not matching then append
-				items = append(items, o.Object)
-			}
-		}
-		obj.Object["items"] = items
-		out, err := obj.MarshalJSON()
-		if err != nil {
-			return newStringValHolder(data)
-		}
-		return newStringValHolder(string(out))
-	} else {
-		resourceKey := kube.GetResourceKey(obj)
-		if len(filter) == 0 || (&resourceKey).String() == filter {
-			if len(pattern) == 0 {
-				return newEmptyHolder()
-			} else {
-				out := JsonDelete(data, pattern)
-				return out
-			}
-		} else {
-			return newStringValHolder(data)
-		}
-	}
-	return newStringValHolder(data)
 }
 
 func (l *KlangListener) GetTextFromStringOrId(stringOrId *parser.String_or_idContext) string {
@@ -659,201 +420,6 @@ func (l *KlangListener) GetTextFromStringOrId(stringOrId *parser.String_or_idCon
 		return pattern[1 : len(pattern)-1]
 	}
 	return pattern
-}
-
-// EnterYaml_delete_fn is called when production yaml_delete_fn is entered.
-func (l *KlangListener) ExitYaml_delete_fn(ctx *parser.Yaml_delete_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleYaml_delete_fn(ctx)
-}
-
-func (l *KlangListener) handleYaml_delete_fn(ctx *parser.Yaml_delete_fnContext) valHolder {
-	yaml := l.values[ctx.ID().GetText()]
-	yaml = l.getValIfID(yaml)
-	if yaml.dataType != STRING || len(yaml.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("yaml should be string of non zero length found %+v\n", yaml))
-	}
-	patternLabel := ctx.String_or_id().(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	index := -1
-	if ctx.NUMBER() != nil && len(ctx.NUMBER().GetText()) > 0 {
-		i, err := strconv.Atoi(ctx.NUMBER().GetText())
-		if err == nil {
-			index = i
-		}
-	}
-	yamls := strings.Split(yaml.value.(string), yamlSeperator)
-	//yamls, err := kube.SplitYAML([]byte(yaml.value.(string)))
-	var outYamls []string
-	for i, yaml := range yamls {
-		if index == -1 || i == index {
-			res := YamlDelete(yaml, pattern)
-			outYamls = append(outYamls, res.value.(string))
-		} else {
-			outYamls = append(outYamls, yaml)
-		}
-	}
-	yaml.value = strings.Join(outYamls, yamlSeperator)
-	l.values[yaml.name] = yaml
-	//fmt.Printf("delete pattern %s, out %+v\n", pattern, yaml)
-	return newEmptyHolder()
-}
-
-// ExitYamledit_fn is called when production yamledit_fn is exited.
-func (l *KlangListener) ExitYaml_edit_fn(ctx *parser.Yaml_edit_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleYaml_edit_fn(ctx)
-}
-
-func (l *KlangListener) handleYaml_edit_fn(ctx *parser.Yaml_edit_fnContext) valHolder {
-	yaml := l.values[ctx.ID().GetText()]
-	yaml = l.getValIfID(yaml)
-	if yaml.dataType != STRING || len(yaml.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("yaml should be string of non zero length found %+v\n", yaml))
-	}
-	patternLabel := ctx.String_or_id().(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	valVh := l.handleExpr(ctx.Expr())
-	valVh = l.getValIfID(valVh)
-	if valVh.value == nil {
-		return newErrHolder(fmt.Errorf("value cannot be nil"))
-	}
-	val := valVh.value
-	index := -1
-	if ctx.NUMBER() != nil && len(ctx.NUMBER().GetText()) > 0 {
-		i, err := strconv.Atoi(ctx.NUMBER().GetText())
-		if err == nil {
-			index = i
-		}
-	}
-	yamls := strings.Split(yaml.value.(string), yamlSeperator)
-	var outYamls []string
-	for i, yaml := range yamls {
-		if index == -1 || i == index {
-			res := YamlEdit(yaml, pattern, val)
-			outYamls = append(outYamls, res.value.(string))
-		} else {
-			outYamls = append(outYamls, yaml)
-		}
-	}
-	yaml.value = strings.Join(outYamls, yamlSeperator)
-	l.values[yaml.name] = yaml
-	//fmt.Printf("val %+v, pattern %s, out %+v\n", val, pattern, yaml)
-	return newEmptyHolder()
-}
-
-func (l *KlangListener) ExitKube_yaml_delete_fn(ctx *parser.Kube_yaml_delete_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleKube_yaml_delete_fn(ctx)
-}
-
-func (l *KlangListener) handleKube_yaml_delete_fn(ctx *parser.Kube_yaml_delete_fnContext) valHolder {
-	yml := l.values[ctx.ID().GetText()]
-	yml = l.getValIfID(yml)
-	if yml.dataType != STRING || len(yml.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("yml should be string of non zero length %+v\n", yml))
-	}
-	data := yml.value.(string)
-	pattern := ""
-	if ctx.Pattern() != nil {
-		pattern = ctx.Pattern().(*parser.PatternContext).String_or_id().GetText()
-	}
-	filter := ""
-	if ctx.Filter() != nil {
-		filter = ctx.Filter().(*parser.FilterContext).String_or_id().GetText()
-	}
-
-	res := handleKubeYamlDelete(data, filter, pattern)
-	yml.value = res.value
-	l.values[yml.name] = yml
-	return yml
-}
-
-func handleKubeYamlDelete(data string, filter string, pattern string) valHolder {
-	ymls := strings.Split(data, yamlSeperator)
-	var outYmls []string
-	for _, y := range ymls {
-		json, err := yaml.YAMLToJSON([]byte(y))
-		if err != nil {
-			return newStringValHolder(data)
-		}
-		out := handleKubeJsonDelete(string(json), filter, pattern)
-		//if out.dataType != STRING {
-		//	return newStringValHolder(data)
-		//}
-		if out.value != nil && len(out.value.(string)) > 0 {
-			outYml, err := yaml.JSONToYAML([]byte(out.value.(string)))
-			if err != nil {
-				return newStringValHolder(data)
-			}
-			outYmls = append(outYmls, string(outYml))
-		}
-		//If return is empty string because of filter only then skip it
-	}
-	return newStringValHolder(strings.Join(outYmls, yamlSeperator))
-}
-
-// EnterKube_json_edit_fn is called when production kube_yaml_edit_fn is entered.
-func (l *KlangListener) EnterKube_yaml_edit_fn(ctx *parser.Kube_yaml_edit_fnContext) {
-	if l.ifWhileCount != 0 {
-		return
-	}
-	l.handleKube_yaml_edit_fn(ctx)
-}
-
-func (l *KlangListener) handleKube_yaml_edit_fn(ctx *parser.Kube_yaml_edit_fnContext) valHolder {
-	yml := l.values[ctx.ID().GetText()]
-	yml = l.getValIfID(yml)
-	if yml.dataType != STRING || len(yml.value.(string)) == 0 {
-		return newErrHolder(fmt.Errorf("yml should be string of non zero length %+v\n", yml))
-	}
-	data := yml.value.(string)
-	valVh := l.handleExpr(ctx.Expr())
-	valVh = l.getValIfID(valVh)
-	if valVh.value == nil {
-		return newErrHolder(fmt.Errorf("value cannot be nil"))
-	}
-	val := valVh.value
-	patternLabel := ctx.String_or_id(0).(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	filter := ""
-	if len(ctx.AllString_or_id()) > 1 {
-		filter = l.GetTextFromStringOrId(ctx.String_or_id(1).(*parser.String_or_idContext))
-	}
-	res := handleKubeYamlEdit(data, filter, pattern, val)
-	yml.value = res.value
-	l.values[yml.name] = yml
-	return res
-}
-
-func handleKubeYamlEdit(data string, filter string, pattern string, value interface{}) valHolder {
-	ymls := strings.Split(data, yamlSeperator)
-	var outYmls []string
-	for _, y := range ymls {
-		json, err := yaml.YAMLToJSON([]byte(y))
-		if err != nil {
-			return newStringValHolder(data)
-		}
-		out := handleKubeJsonEdit(string(json), filter, pattern, value)
-		//if out.dataType != STRING {
-		//	return newStringValHolder(data)
-		//}
-		if out.value != nil && len(out.value.(string)) > 0 {
-			outYml, err := yaml.JSONToYAML([]byte(out.value.(string)))
-			if err != nil {
-				return newStringValHolder(data)
-			}
-			outYmls = append(outYmls, string(outYml))
-		}
-		//If return is empty string because of filter only then skip it
-	}
-	return newStringValHolder(strings.Join(outYmls, yamlSeperator))
 }
 
 func (l *KlangListener) handleDownload_fn(ctx *parser.Download_fnContext) valHolder {
@@ -892,34 +458,6 @@ func (l *KlangListener) handleDownload_fn(ctx *parser.Download_fnContext) valHol
 	}
 
 	return newStringValHolder(string(data))
-}
-
-func (l *KlangListener) handleYaml_select_fn(ctx parser.IYaml_select_fnContext) valHolder {
-	yctx := ctx.(*parser.Yaml_select_fnContext)
-	id := yctx.ID().GetText()
-	index := -1
-	if yctx.NUMBER() != nil && len(yctx.NUMBER().GetText()) > 0 {
-		i, err := strconv.Atoi(yctx.NUMBER().GetText())
-		if err == nil {
-			index = i
-		}
-	}
-
-	patternLabel := yctx.String_or_id().(*parser.String_or_idContext)
-	pattern := l.GetTextFromStringOrId(patternLabel)
-	if data, ok := l.values[id]; ok && data.dataType == STRING && len(pattern) != 0 {
-		yamls := strings.Split(data.value.(string), yamlSeperator)
-		if index == -1 && len(yamls) != 1 {
-			return newErrHolder(fmt.Errorf("in case of multiyaml (len is %d) its important to define index of yaml for selection", len(yamls)))
-		}
-		for i, yaml := range yamls {
-			if index == -1 || i == index {
-				res := YamlSelect(yaml, pattern)
-				return res
-			}
-		}
-	}
-	return newNilValHolder()
 }
 
 func (l *KlangListener) handleCondition_block(ctx *parser.Condition_blockContext) valHolder {

@@ -156,11 +156,11 @@ kubernetes_object_config
  ;
 
 filter
- : FILTER EQ string_or_id
+ : FILTER ASSIGN string_or_id
  ;
 
 pattern
- : PATTERN EQ string_or_id
+ : PATTERN ASSIGN string_or_id
  ;
 
 expr
