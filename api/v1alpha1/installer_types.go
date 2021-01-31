@@ -30,7 +30,8 @@ type InstallerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// URL of the BOM version to be installed
-	URL string `json:"url,omitempty" protobuf:"bytes,1,opt,name=url"`
+	URL    string `json:"url,omitempty" protobuf:"bytes,1,opt,name=url"`
+	ReSync bool   `json:"reSync,omitempty" protobuf:"bytes,2,opt,name=reSync"`
 }
 
 // InstallerStatus defines the observed state of Installer
