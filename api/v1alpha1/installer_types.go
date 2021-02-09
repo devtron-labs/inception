@@ -65,6 +65,7 @@ type ResourceStatus struct {
 	Status    SyncStatusCode `json:"status,omitempty" protobuf:"bytes,6,opt,name=status"`
 	Health    *HealthStatus  `json:"health,omitempty" protobuf:"bytes,7,opt,name=health"`
 	Operation string         `json:"operation,omitempty" protobuf:"bytes,8,opt,name=operation"`
+	Message   string         `json:"message,omitempty" protobuf:"bytes,9,opt,name=message"`
 }
 
 type HealthStatus struct {

@@ -751,6 +751,7 @@ func (l *KlangListener) handleKubectl_command(ctx parser.IKubectl_commandContext
 				}
 				//TODO: update status and health
 				if len(response.Err) > 0 {
+					fmt.Printf("{\"err\": \"%s\"}\n", response.Err)
 					resource.Message = response.Err
 					resource.Status = ResourceSyncStatusCodeOutOfSync
 					returnVal = false
