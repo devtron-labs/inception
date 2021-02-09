@@ -30,7 +30,8 @@ type InstallerSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// URL of the BOM version to be installed
-	URL string `json:"url,omitempty" protobuf:"bytes,1,opt,name=url"`
+	URL    string `json:"url,omitempty" protobuf:"bytes,1,opt,name=url"`
+	ReSync bool   `json:"reSync,omitempty" protobuf:"bytes,2,opt,name=reSync"`
 }
 
 // InstallerStatus defines the observed state of Installer
@@ -64,6 +65,7 @@ type ResourceStatus struct {
 	Status    SyncStatusCode `json:"status,omitempty" protobuf:"bytes,6,opt,name=status"`
 	Health    *HealthStatus  `json:"health,omitempty" protobuf:"bytes,7,opt,name=health"`
 	Operation string         `json:"operation,omitempty" protobuf:"bytes,8,opt,name=operation"`
+	Message   string         `json:"message,omitempty" protobuf:"bytes,9,opt,name=message"`
 }
 
 type HealthStatus struct {

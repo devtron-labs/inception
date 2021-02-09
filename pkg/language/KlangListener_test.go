@@ -484,6 +484,75 @@ age = jsonSelect(fo, selector);
 	}
 }
 
+func TestKlangListener_secret_wo_base64(t *testing.T) {
+	a := `
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-cm
+  namespace: dev
+  labels:
+    app.kubernetes.io/instance: my-app
+data:
+  name: abc
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-cm2
+  namespace: dev
+  labels:
+    app.kubernetes.io/instance: my-app
+data:
+  name: def
+`
+	d := "a = `" + a + "`" + `;
+x = kubectl apply -n pras a;
+;
+`
+	//programmers.#(lastName="Hunter").firstName
+	fmt.Printf("%s", d)
+	type fields struct {
+		input  string
+		values map[string]valHolder
+	}
+	type args struct {
+		ctx *parser2.AssignmentContext
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		args   args
+	}{
+		{
+			name: "kubectl integration",
+			fields: fields{
+				input: d,
+				values: map[string]valHolder{
+					"age": {
+						dataType: "STRING",
+						name:     "age",
+						value:    "36",
+					},
+				},
+			},
+			args: args{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := setup(tt.fields.input)
+			age := r.values["age"]
+			m := map[string]valHolder{
+				"age": age,
+			}
+			if diff := compare(tt.fields.values, m); !diff {
+				t.Errorf("expected %+v, found %+v\n", tt.fields.values, r.Values())
+			}
+		})
+	}
+}
+
 func TestKlangListener_temp(t *testing.T) {
 	//	base64DecoderPrefix := `#!/bin/bash
 	//echo -n "`

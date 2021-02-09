@@ -70,10 +70,11 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return reconcile.Result{}, fmt.Errorf("url is not specified")
 	}
 	updated := false
-	if hasURLChanged(installer) {
+	if hasSpecChanged(installer) {
 		fmt.Println("url changed")
 		installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeOutOfSync
 		installer.Status.Sync.URL = installer.Spec.URL
+		installer.Spec.ReSync = false
 		updated = true
 	} else if shouldDownload(installer) {
 		fmt.Println("should download")
@@ -137,6 +138,7 @@ func (r *InstallerReconciler) apply(installer *installerv1alpha1.Installer) *lan
 				Status:    toSyncStatus(resource.Status),
 				Health:    nil,
 				Operation: resource.Operation,
+				Message: resource.Message,
 			}
 			resourceStatuses = append(resourceStatuses, rs)
 		}
@@ -197,8 +199,8 @@ func downloadDSL(url string) (string, error) {
 	return string(data), nil
 }
 
-func hasURLChanged(installer *installerv1alpha1.Installer) bool {
-	if installer.Spec.URL != installer.Status.Sync.URL {
+func hasSpecChanged(installer *installerv1alpha1.Installer) bool {
+	if installer.Spec.URL != installer.Status.Sync.URL || installer.Spec.ReSync {
 		return true
 	}
 	return false
