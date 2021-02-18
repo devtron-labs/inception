@@ -508,6 +508,7 @@ data:
 `
 	d := "a = `" + a + "`" + `;
 x = kubectl apply -n pras a;
+migDelete = kubectl delete -n devtroncd job  postgresql-migrate-devtron postgresql-migrate-casbin postgresql-migrate-gitsensor  postgresql-migrate-lens;
 ;
 `
 	//programmers.#(lastName="Hunter").firstName
@@ -557,7 +558,7 @@ func TestKlangListener_temp(t *testing.T) {
 	//	base64DecoderPrefix := `#!/bin/bash
 	//echo -n "`
 	//	base64DecoderSuffix := `" | base64 -d`
-	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/devtron-installation-script/installation-script")
+	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/devtron-installation-script/installation-script-part")
 	if err != nil {
 		panic(err)
 	}
