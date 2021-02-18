@@ -16,6 +16,7 @@ limitations under the License.
 package language
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/argoproj/gitops-engine/pkg/utils/kube"
 	"github.com/devtron-labs/inception/pkg/language/parser"
@@ -145,6 +146,9 @@ func (l *KlangListener) handleKube_json_edit_fn(ctx *parser.Kube_json_edit_fnCon
 	if len(ctx.AllString_or_id()) > 1 {
 		filter = l.GetTextFromStringOrId(ctx.String_or_id(1).(*parser.String_or_idContext))
 	}
+	if valVh.dataType == STRING {
+		val = convertToInterface(val.(string))
+	}
 	res := handleKubeJsonEdit(data, filter, pattern, val)
 	json.value = res.value
 	l.values[json.name] = json
@@ -157,6 +161,7 @@ func handleKubeJsonEdit(data string, filter string, pattern string, value interf
 	if err != nil {
 		return newStringValHolder(data)
 	}
+	//in := convertToInterface(data)
 	if obj.IsList() {
 		objs, err := obj.ToList()
 		if err != nil {
@@ -281,6 +286,9 @@ func (l *KlangListener) handleKube_yaml_edit_fn(ctx *parser.Kube_yaml_edit_fnCon
 	if len(ctx.AllString_or_id()) > 1 {
 		filter = l.GetTextFromStringOrId(ctx.String_or_id(1).(*parser.String_or_idContext))
 	}
+	if valVh.dataType == STRING {
+		val = convertToInterface(val.(string))
+	}
 	res := handleKubeYamlEdit(data, filter, pattern, val)
 	yml.value = res.value
 	l.values[yml.name] = yml
@@ -306,4 +314,17 @@ func handleKubeYamlEdit(data string, filter string, pattern string, value interf
 		//If return is empty string because of filter only then skip it
 	}
 	return newStringValHolder(strings.Join(outYmls, yamlSeperator))
+}
+
+func convertToInterface(data string) interface{} {
+	var out map[string]interface{}
+	err := json.Unmarshal([]byte(data), &out)
+	if err == nil {
+		return out
+	}
+	err = yaml.Unmarshal([]byte(data), &out)
+	if err == nil {
+		return out
+	}
+	return data
 }
