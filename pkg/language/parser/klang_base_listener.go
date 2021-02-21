@@ -200,6 +200,12 @@ func (s *BaseKlangListener) EnterNs(ctx *NsContext) {}
 // ExitNs is called when production ns is exited.
 func (s *BaseKlangListener) ExitNs(ctx *NsContext) {}
 
+// EnterAsObject is called when production asObject is entered.
+func (s *BaseKlangListener) EnterAsObject(ctx *AsObjectContext) {}
+
+// ExitAsObject is called when production asObject is exited.
+func (s *BaseKlangListener) ExitAsObject(ctx *AsObjectContext) {}
+
 // EnterPatch_type is called when production patch_type is entered.
 func (s *BaseKlangListener) EnterPatch_type(ctx *Patch_typeContext) {}
 

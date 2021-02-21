@@ -146,7 +146,8 @@ func (l *KlangListener) handleKube_json_edit_fn(ctx *parser.Kube_json_edit_fnCon
 	if len(ctx.AllString_or_id()) > 1 {
 		filter = l.GetTextFromStringOrId(ctx.String_or_id(1).(*parser.String_or_idContext))
 	}
-	if valVh.dataType == STRING {
+	asObject := ctx.AsObject()
+	if valVh.dataType == STRING && asObject != nil {
 		val = convertToInterface(val.(string))
 	}
 	res := handleKubeJsonEdit(data, filter, pattern, val)
@@ -286,7 +287,8 @@ func (l *KlangListener) handleKube_yaml_edit_fn(ctx *parser.Kube_yaml_edit_fnCon
 	if len(ctx.AllString_or_id()) > 1 {
 		filter = l.GetTextFromStringOrId(ctx.String_or_id(1).(*parser.String_or_idContext))
 	}
-	if valVh.dataType == STRING {
+	asObject := ctx.AsObject()
+	if valVh.dataType == STRING && asObject != nil {
 		val = convertToInterface(val.(string))
 	}
 	res := handleKubeYamlEdit(data, filter, pattern, val)
