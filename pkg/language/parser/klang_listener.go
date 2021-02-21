@@ -97,6 +97,9 @@ type KlangListener interface {
 	// EnterNs is called when entering the ns production.
 	EnterNs(c *NsContext)
 
+	// EnterAsObject is called when entering the asObject production.
+	EnterAsObject(c *AsObjectContext)
+
 	// EnterPatch_type is called when entering the patch_type production.
 	EnterPatch_type(c *Patch_typeContext)
 
@@ -288,6 +291,9 @@ type KlangListener interface {
 
 	// ExitNs is called when exiting the ns production.
 	ExitNs(c *NsContext)
+
+	// ExitAsObject is called when exiting the asObject production.
+	ExitAsObject(c *AsObjectContext)
 
 	// ExitPatch_type is called when exiting the patch_type production.
 	ExitPatch_type(c *Patch_typeContext)

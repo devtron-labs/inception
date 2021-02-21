@@ -52,7 +52,7 @@ yaml_delete_fn
  ;
 
 kube_json_edit_fn
- : KUBEJSONEDIT OPAR ID COMMA string_or_id COMMA expr (COMMA string_or_id)? CPAR SCOL
+ : KUBEJSONEDIT OPAR ID COMMA string_or_id COMMA expr (COMMA string_or_id)? (COMMA asObject)? CPAR SCOL
  ;
 
 kube_json_delete_fn
@@ -63,7 +63,7 @@ kube_json_delete_fn
  ;
 
 kube_yaml_edit_fn
- : KUBEYAMLEDIT OPAR ID COMMA string_or_id COMMA expr (COMMA string_or_id)? CPAR SCOL
+ : KUBEYAMLEDIT OPAR ID COMMA string_or_id COMMA expr (COMMA string_or_id)? (COMMA asObject)? CPAR SCOL
  ;
 
 kube_yaml_delete_fn
@@ -134,6 +134,10 @@ ns
  : string_or_id
  | PATH
  ;
+
+asObject
+  : '"asObject"'
+  ;
 
 patch_type
  : PATH
