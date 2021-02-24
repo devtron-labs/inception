@@ -44,7 +44,7 @@ func TestKlangListener_handleNestedIf(t *testing.T) {
 name = "name";
 if name == name && name == name && name == name && name == name || name == name { a=1+2; }
 if 2==2 {
-if 1==1 {
+if 1==1 && name {
 a = 2; 
 }
 else {
