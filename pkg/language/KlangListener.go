@@ -524,20 +524,24 @@ func (l *KlangListener) handleExpr(ctx parser.IExprContext) valHolder {
 		rhs := l.handleExpr(v.Expr(1))
 		lhs = l.getValIfID(lhs)
 		rhs = l.getValIfID(rhs)
+		lhs = l.isFalse(lhs)
+		rhs = l.isFalse(rhs)
 		if lhs.dataType != BOOLEAN || rhs.dataType != BOOLEAN {
 			return valHolder{}
 		}
-		isTrue := lhs.value.(bool) == true && rhs.value.(bool) == true
+		isTrue := lhs.value.(bool) != true && rhs.value.(bool) != true
 		return newBooleanValHolder(isTrue)
 	case *parser.OrExprContext:
 		lhs := l.handleExpr(v.Expr(0))
 		rhs := l.handleExpr(v.Expr(1))
 		lhs = l.getValIfID(lhs)
 		rhs = l.getValIfID(rhs)
+		lhs = l.isFalse(lhs)
+		rhs = l.isFalse(rhs)
 		if lhs.dataType != BOOLEAN || rhs.dataType != BOOLEAN {
 			return valHolder{}
 		}
-		isTrue := lhs.value.(bool) == true || rhs.value.(bool) == true
+		isTrue := lhs.value.(bool) != true || rhs.value.(bool) != true
 		return newBooleanValHolder(isTrue)
 	case *parser.AdditiveExprContext:
 		op := PLUS
@@ -606,6 +610,7 @@ func (l *KlangListener) handleExpr(ctx parser.IExprContext) valHolder {
 		return l.handleDownload_fn(v.Download_fn().(*parser.Download_fnContext))
 	case *parser.NotExprContext:
 		r := l.handleExpr(v.Expr())
+		r = l.getValIfID(r)
 		return l.isFalse(r)
 	default:
 		break
@@ -692,11 +697,13 @@ func (l *KlangListener) handleAtom(ctx parser.IAtomContext) valHolder {
 		return newBooleanValHolder(val)
 	case *parser.IdAtomContext:
 		//TODO: verify this
-		return valHolder{
+		rval := valHolder{
 			dataType: ID,
 			value:    v.GetText(),
 			name:     v.GetText(),
 		}
+		rval = l.getValIfID(rval)
+		return rval
 	case *parser.JsonAtomContext:
 		return newStringValHolder(v.GetText())
 	default:

@@ -44,7 +44,7 @@ func TestKlangListener_handleNestedIf(t *testing.T) {
 name = "name";
 if name == name && name == name && name == name && name == name || name == name { a=1+2; }
 if 2==2 {
-if 1==1 {
+if 1==1 && name {
 a = 2; 
 }
 else {
@@ -558,7 +558,7 @@ func TestKlangListener_temp(t *testing.T) {
 	//	base64DecoderPrefix := `#!/bin/bash
 	//echo -n "`
 	//	base64DecoderSuffix := `" | base64 -d`
-	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/devtron-installation-script/installation-script")
+	data, err := ioutil.ReadFile("/Users/pghildiy/Documents/devtronCode/installation-yamls/devtron-installation-script/installation-script-part")
 	if err != nil {
 		panic(err)
 	}
