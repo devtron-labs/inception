@@ -89,9 +89,9 @@ type SyncStatusMessage string
 const (
 	SyncStatusMessageUnknown    SyncStatusMessage = "Unknown - We are unable to determine the state of execution, please check access of service account and connectivity to API server"
 	SyncStatusMessageSynced     SyncStatusMessage = "Synced - Script has been executed successfully and kubernetes objects are in the desired state"
-	SyncStatusMessageOutOfSync  SyncStatusMessage = "OutOfSync - Script has been executed and kubernetes objects are not in the desired state"
-	SyncStatusMessageApplied    SyncStatusMessage = "Applied- Script has been executed"
-	SyncStatusMessageDownloaded SyncStatusMessage = "Downloaded - Script mentioned in the url has been downloaded and now it will be executed"
+	SyncStatusMessageOutOfSync  SyncStatusMessage = "OutOfSync - URL change has been detected, new manifest will be downloaded and status will be changed to Downloaded"
+	SyncStatusMessageApplied    SyncStatusMessage = "Applied- Manifest as been Applied  and system is ready to use with newer version"
+	SyncStatusMessageDownloaded SyncStatusMessage = "Downloaded - Installation manifest been downloaded and now it will be applied, it will take approx 30 mins for it to complete. Once it is complete status will change to Applied"
 )
 
 
