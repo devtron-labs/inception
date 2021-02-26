@@ -152,11 +152,14 @@ spec:
                   type: array
                 status:
                   type: string
+                status_message:
+                  type: string
                 url:
                   description: URL of the BOM version pulled
                   type: string
               required:
               - status
+              - status_message
               type: object
           required:
           - current_spec_hash

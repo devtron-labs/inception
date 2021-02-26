@@ -53,6 +53,7 @@ type SyncStatus struct {
 	Conditions []InstallerCondition `json:"conditions,omitempty" protobuf:"bytes,5,opt,name=conditions"`
 	Health     HealthStatus         `json:"health,omitempty" protobuf:"bytes,6,opt,name=health"`
 	History    RevisionHistories    `json:"history,omitempty" protobuf:"bytes,7,opt,name=history"`
+	StatusMessage SyncStatusMessage `json:"status_message" protobuf:"bytes,8,opt,name=statusMessage,casttype=SyncStatusMessage"`
 }
 
 // ResourceStatus holds the current sync and health status of a resource
@@ -82,6 +83,17 @@ const (
 	SyncStatusCodeApplied    SyncStatusCode = "Applied"
 	SyncStatusCodeDownloaded SyncStatusCode = "Downloaded"
 )
+
+type SyncStatusMessage string
+
+const (
+	SyncStatusMessageUnknown    SyncStatusMessage = "Unknown - We are unable to determine the state of execution, please check access of service account and connectivity to API server"
+	SyncStatusMessageSynced     SyncStatusMessage = "Synced - Script has been executed successfully and kubernetes objects are in the desired state"
+	SyncStatusMessageOutOfSync  SyncStatusMessage = "OutOfSync - URL change has been detected, new manifest will be downloaded and status will be changed to Downloaded"
+	SyncStatusMessageApplied    SyncStatusMessage = "Applied- Manifest as been Applied  and system is ready to use with newer version"
+	SyncStatusMessageDownloaded SyncStatusMessage = "Downloaded - Installation manifest been downloaded and now it will be applied, it will take approx 30 mins for it to complete. Once it is complete status will change to Applied"
+)
+
 
 // InstallerCondition contains details about current application condition
 type InstallerCondition struct {

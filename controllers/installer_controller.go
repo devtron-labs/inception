@@ -73,6 +73,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if hasSpecChanged(installer) {
 		fmt.Println("url changed")
 		installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeOutOfSync
+		installer.Status.Sync.StatusMessage = installerv1alpha1.SyncStatusMessageOutOfSync
 		installer.Status.Sync.URL = installer.Spec.URL
 		installer.Spec.ReSync = false
 		updated = true
@@ -110,6 +111,7 @@ func (r *InstallerReconciler) sync(installer *installerv1alpha1.Installer) error
 	installer.Status.Sync.URL = url
 	installer.Status.Sync.Data = data
 	installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeDownloaded
+	installer.Status.Sync.StatusMessage = installerv1alpha1.SyncStatusMessageDownloaded
 	return nil
 }
 
@@ -147,6 +149,7 @@ func (r *InstallerReconciler) apply(installer *installerv1alpha1.Installer) *lan
 	installer.Status.Sync.URL = url
 	installer.Status.Sync.Data = data
 	installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeApplied
+	installer.Status.Sync.StatusMessage = installerv1alpha1.SyncStatusMessageApplied
 	installer.Status.Sync.Resources = resourceStatuses
 	return listener
 }
