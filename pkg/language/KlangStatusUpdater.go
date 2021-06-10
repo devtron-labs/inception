@@ -22,11 +22,11 @@ import (
 
 type KlangStatusUpdater struct {
 	kubectlCommands int
-	stepStatuses []*stepStatus
+	stepStatuses    []*stepStatus
 }
 
 type stepStatus struct {
-	name string
+	name   string
 	status string
 }
 

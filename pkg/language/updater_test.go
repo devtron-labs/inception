@@ -256,8 +256,8 @@ update:
 		{
 			name: "array merge test",
 			args: args{
-				from: from,
-				to: to,
+				from:     from,
+				to:       to,
 				patterns: patterns,
 			},
 		},

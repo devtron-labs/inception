@@ -39,7 +39,7 @@ func TestKlangStatusUpdater_updateStepStatus(t *testing.T) {
 				stepStatuses:    []*stepStatus{&stepStatus{name: "1"}, &stepStatus{name: "2"}, &stepStatus{name: "3"}},
 			},
 			args: args{name: "2"},
-			out: []*stepStatus{&stepStatus{name: "1", status: StepCompleted}, &stepStatus{name: "2", status: StepInProgress}, &stepStatus{name: "3"}},
+			out:  []*stepStatus{&stepStatus{name: "1", status: StepCompleted}, &stepStatus{name: "2", status: StepInProgress}, &stepStatus{name: "3"}},
 		},
 	}
 	for _, tt := range tests {

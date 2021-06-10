@@ -33,6 +33,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/kubectl/pkg/cmd/util"
+	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"time"
 )
@@ -110,11 +111,11 @@ func (k *kubectl) PatchResource(ctx context.Context, r *PatchRequest) (*Manifest
 
 // DeleteResource deletes a specified resource
 func (k *kubectl) DeleteResource(ctx context.Context, r *DeleteRequest) (*ManifestResponse, error) {
-	var force bool
+	deleteOptions := metav1.DeleteOptions{}
 	if r.Force != nil {
-		force = *r.Force
+		deleteOptions.GracePeriodSeconds = pointer.Int64Ptr(0)
 	}
-	err := k.kubectl.DeleteResource(ctx, k.restConfig, r.GroupVersionKind, r.Name, r.Namespace, force)
+	err := k.kubectl.DeleteResource(ctx, k.restConfig, r.GroupVersionKind, r.Name, r.Namespace, deleteOptions)
 	if err != nil {
 		return nil, err
 	}

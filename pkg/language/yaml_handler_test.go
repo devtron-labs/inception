@@ -97,7 +97,7 @@ data:
 			args: args{
 				yml:     yml,
 				pattern: `metadata.name`,
-				value: "ghi",
+				value:   "ghi",
 			},
 			want: valHolder{
 				dataType: STRING,
@@ -127,4 +127,3 @@ data:
 		})
 	}
 }
-

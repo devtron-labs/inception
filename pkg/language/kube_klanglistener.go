@@ -116,7 +116,6 @@ func handleKubeJsonDelete(data string, filter string, pattern string) valHolder 
 			return newStringValHolder(data)
 		}
 	}
-	return newStringValHolder(data)
 }
 
 // ExitKube_json_edit_fn is called when production kube_yaml_edit_fn is exited.
@@ -207,7 +206,6 @@ func handleKubeJsonEdit(data string, filter string, pattern string, value interf
 			return newStringValHolder(data)
 		}
 	}
-	return newStringValHolder(data)
 }
 
 func (l *KlangListener) ExitKube_yaml_delete_fn(ctx *parser.Kube_yaml_delete_fnContext) {
