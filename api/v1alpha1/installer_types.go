@@ -48,12 +48,12 @@ type SyncStatus struct {
 	Resources []ResourceStatus `json:"resources,omitempty" protobuf:"bytes,1,opt,name=resources"`
 	Status    SyncStatusCode   `json:"status" protobuf:"bytes,2,opt,name=status,casttype=SyncStatusCode"`
 	// URL of the BOM version pulled
-	URL        string               `json:"url,omitempty" protobuf:"bytes,3,opt,name=url"`
-	Data       string               `json:"data,omitempty" protobuf:"bytes,4,opt,name=data"`
-	Conditions []InstallerCondition `json:"conditions,omitempty" protobuf:"bytes,5,opt,name=conditions"`
-	Health     HealthStatus         `json:"health,omitempty" protobuf:"bytes,6,opt,name=health"`
-	History    RevisionHistories    `json:"history,omitempty" protobuf:"bytes,7,opt,name=history"`
-	StatusMessage SyncStatusMessage `json:"status_message" protobuf:"bytes,8,opt,name=statusMessage,casttype=SyncStatusMessage"`
+	URL           string               `json:"url,omitempty" protobuf:"bytes,3,opt,name=url"`
+	Data          string               `json:"data,omitempty" protobuf:"bytes,4,opt,name=data"`
+	Conditions    []InstallerCondition `json:"conditions,omitempty" protobuf:"bytes,5,opt,name=conditions"`
+	Health        HealthStatus         `json:"health,omitempty" protobuf:"bytes,6,opt,name=health"`
+	History       RevisionHistories    `json:"history,omitempty" protobuf:"bytes,7,opt,name=history"`
+	StatusMessage SyncStatusMessage    `json:"status_message" protobuf:"bytes,8,opt,name=statusMessage,casttype=SyncStatusMessage"`
 }
 
 // ResourceStatus holds the current sync and health status of a resource
@@ -93,7 +93,6 @@ const (
 	SyncStatusMessageApplied    SyncStatusMessage = "Applied- Manifest as been Applied  and system is ready to use with newer version"
 	SyncStatusMessageDownloaded SyncStatusMessage = "Downloaded - Installation manifest been downloaded and now it will be applied, it will take approx 30 mins for it to complete. Once it is complete status will change to Applied"
 )
-
 
 // InstallerCondition contains details about current application condition
 type InstallerCondition struct {

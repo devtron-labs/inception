@@ -140,7 +140,7 @@ func (r *InstallerReconciler) apply(installer *installerv1alpha1.Installer) *lan
 				Status:    toSyncStatus(resource.Status),
 				Health:    nil,
 				Operation: resource.Operation,
-				Message: resource.Message,
+				Message:   resource.Message,
 			}
 			resourceStatuses = append(resourceStatuses, rs)
 		}

@@ -201,16 +201,16 @@ func (l *KlangListener) handleStat(ctx parser.IStatContext) {
 	} else if ts.Yaml_delete_fn() != nil {
 		tya := ts.Yaml_delete_fn().(*parser.Yaml_delete_fnContext)
 		l.handleYaml_delete_fn(tya)
-	} else if  ts.Kube_json_delete_fn() != nil {
+	} else if ts.Kube_json_delete_fn() != nil {
 		kjd := ts.Kube_json_delete_fn().(*parser.Kube_json_delete_fnContext)
 		l.handleKube_json_delete_fn(kjd)
-	} else if  ts.Kube_json_edit_fn() != nil {
+	} else if ts.Kube_json_edit_fn() != nil {
 		kje := ts.Kube_json_edit_fn().(*parser.Kube_json_edit_fnContext)
 		l.handleKube_json_edit_fn(kje)
-	} else if  ts.Kube_yaml_delete_fn() != nil {
+	} else if ts.Kube_yaml_delete_fn() != nil {
 		kyd := ts.Kube_yaml_delete_fn().(*parser.Kube_yaml_delete_fnContext)
 		l.handleKube_yaml_delete_fn(kyd)
-	} else if  ts.Kube_yaml_edit_fn() != nil {
+	} else if ts.Kube_yaml_edit_fn() != nil {
 		kye := ts.Kube_yaml_edit_fn().(*parser.Kube_yaml_edit_fnContext)
 		l.handleKube_yaml_edit_fn(kye)
 	} else if ts.Sleep_fn() != nil {
