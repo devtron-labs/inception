@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/argoproj/gitops-engine/pkg/diff"
 	"github.com/argoproj/gitops-engine/pkg/utils/kube"
+	"github.com/argoproj/gitops-engine/pkg/utils/tracing"
 	log "github.com/sirupsen/logrus"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -32,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+	"k8s.io/klog/klogr"
 	"k8s.io/kubectl/pkg/cmd/util"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -39,7 +41,7 @@ import (
 )
 
 const (
-	crdReadinessTimeout time.Duration = time.Duration(3) * time.Second
+	crdReadinessTimeout = time.Duration(3) * time.Second
 )
 
 type kubectl struct {
@@ -54,9 +56,13 @@ func NewKubectl() *kubectl {
 	if err != nil {
 		return nil
 	}
+	klog := klogr.New()
 	return &kubectl{
 		restConfig,
-		&kube.KubectlCmd{},
+		&kube.KubectlCmd{
+			Log: klog,
+			Tracer: tracing.NopTracer{},
+		},
 		extensionsClientset,
 	}
 }
