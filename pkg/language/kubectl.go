@@ -60,7 +60,7 @@ func NewKubectl() *kubectl {
 	return &kubectl{
 		restConfig,
 		&kube.KubectlCmd{
-			Log: klog,
+			Log:    klog,
 			Tracer: tracing.NopTracer{},
 		},
 		extensionsClientset,
