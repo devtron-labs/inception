@@ -17,6 +17,7 @@ require (
 	k8s.io/apiextensions-apiserver v0.20.7
 	k8s.io/apimachinery v0.20.7
 	k8s.io/client-go v0.20.7
+	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.20.7
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
 	sigs.k8s.io/controller-runtime v0.6.2
@@ -25,7 +26,7 @@ require (
 
 replace (
 	github.com/go-logr/zapr => github.com/go-logr/zapr v0.3.0
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20201216223049-8b5274cf687f
 	k8s.io/api => k8s.io/api v0.20.7
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.7
 	k8s.io/apimachinery => k8s.io/apimachinery v0.20.7
