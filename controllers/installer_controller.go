@@ -57,7 +57,7 @@ type InstallerReconciler struct {
 	//Instead of KLangListener
 	Mapper        *language.Mapper
 	PosthogClient posthog.Client
-	cache         cache.Cache
+	Cache         *cache.Cache
 }
 
 const DevtronUniqueClientIdConfigMap = "devtron-ucid"
@@ -355,7 +355,7 @@ func (r *InstallerReconciler) CreateConfigMap(namespace string, cm *v1.ConfigMap
 }
 
 func (r *InstallerReconciler) getUCID() (string, error) {
-	ucid, found := r.cache.Get(DevtronUniqueClientIdConfigMapKey)
+	ucid, found := r.Cache.Get(DevtronUniqueClientIdConfigMapKey)
 	if found {
 		return ucid.(string), nil
 	} else {
@@ -380,7 +380,7 @@ func (r *InstallerReconciler) getUCID() (string, error) {
 		}
 		dataMap := cm.Data
 		ucid = dataMap[DevtronUniqueClientIdConfigMapKey]
-		r.cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
+		r.Cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
 		if cm == nil {
 			r.Log.Error(err, "configmap not found while getting unique client id", "cm", cm)
 			return ucid.(string), err
