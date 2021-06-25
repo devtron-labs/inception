@@ -20,23 +20,33 @@ import (
 	"context"
 	"crypto/sha1"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
+	installerv1alpha1 "github.com/devtron-labs/inception/api/v1alpha1"
 	"github.com/devtron-labs/inception/pkg/language"
 	parser2 "github.com/devtron-labs/inception/pkg/language/parser"
+	"github.com/go-logr/logr"
+	"github.com/patrickmn/go-cache"
+	"github.com/posthog/posthog-go"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"io"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
+	"math/rand"
 	"net/http"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	installerv1alpha1 "github.com/devtron-labs/inception/api/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
+	"time"
 )
 
 // InstallerReconciler reconciles a Installer object
@@ -45,7 +55,38 @@ type InstallerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 	//Instead of KLangListener
-	Mapper *language.Mapper
+	Mapper        *language.Mapper
+	PosthogClient posthog.Client
+	cache         cache.Cache
+}
+
+const DevtronUniqueClientIdConfigMap = "devtron-ucid"
+const DevtronUniqueClientIdConfigMapKey = "UCID"
+const DevtronNamespace = "devtroncd"
+
+type TelemetryEventType int
+
+const (
+	Heartbeat TelemetryEventType = iota
+	InstallationStart
+	InstallationSuccess
+	InstallationFailure
+	UpgradeSuccess
+	UpgradeFailure
+	Summary
+)
+
+type TelemetryEventDto struct {
+	UCID           string             `json:"ucid"` //unique client id
+	Timestamp      time.Time          `json:"timestamp"`
+	EventMessage   string             `json:"eventMessage,omitempty"`
+	EventType      TelemetryEventType `json:"eventType"`
+	ServerVersion  string             `json:"serverVersion,omitempty"`
+	DevtronVersion string             `json:"devtronVersion,omitempty"`
+}
+
+func (d TelemetryEventType) String() string {
+	return [...]string{"Heartbeat", "InstallationStart", "InstallationSuccess", "InstallationFailure", "UpgradeSuccess", "UpgradeFailure", "Summary"}[d]
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
@@ -77,6 +118,15 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		installer.Status.Sync.URL = installer.Spec.URL
 		installer.Spec.ReSync = false
 		updated = true
+		UCID, err := r.getUCID()
+		if err != nil {
+			r.Log.Error(err, "failed to send event to posthog")
+		}
+		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeSuccess, DevtronVersion: "v1"}
+		err = r.sendEvent(payload)
+		if err != nil {
+			r.Log.Error(err, "failed to send event to posthog")
+		}
 	} else if shouldDownload(installer) {
 		fmt.Println("should download")
 		err := r.sync(installer)
@@ -84,10 +134,28 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return reconcile.Result{}, err
 		}
 		updated = true
+		UCID, err := r.getUCID()
+		if err != nil {
+			r.Log.Error(err, "failed to send event to posthog")
+		}
+		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationSuccess, DevtronVersion: "v1"}
+		err = r.sendEvent(payload)
+		if err != nil {
+			r.Log.Error(err, "failed to send event to posthog")
+		}
 	} else if shouldApply(installer) {
 		fmt.Println("applying")
 		r.apply(installer)
 		updated = true
+		UCID, err := r.getUCID()
+		if err != nil {
+			r.Log.Error(err, "failed to send event to posthog")
+		}
+		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
+		err = r.sendEvent(payload)
+		if err != nil {
+			r.Log.Error(err, "failed to send event to posthog")
+		}
 	}
 
 	if updated {
@@ -98,6 +166,27 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 	return ctrl.Result{}, nil
+}
+
+func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
+	prop := make(map[string]interface{})
+	//payload := &TelemetryEventDto{UCID: "ucid", Timestamp: time.Now(), EventType: Summary, DevtronVersion: "v1"}
+	reqBody, err := json.Marshal(payload)
+	if err != nil {
+		r.Log.Error(err, "telemetry event to posthog from operator, payload marshal error")
+		return nil
+	}
+	err = json.Unmarshal(reqBody, &prop)
+	if err != nil {
+		r.Log.Error(err, "telemetry event to posthog from operator, payload unmarshal error")
+		return nil
+	}
+	r.PosthogClient.Enqueue(posthog.Capture{
+		DistinctId: payload.UCID,
+		Event:      payload.EventType.String(),
+		Properties: prop,
+	})
+	return nil
 }
 
 func (r *InstallerReconciler) sync(installer *installerv1alpha1.Installer) error {
@@ -227,4 +316,86 @@ func (r *InstallerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&installerv1alpha1.Installer{}).
 		Complete(r)
+}
+
+func (r *InstallerReconciler) GetClientForInCluster() (*v12.CoreV1Client, error) {
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		r.Log.Error(err, " error on in cluster config")
+		return nil, err
+	}
+	// creates the clientset
+	clientset, err := v12.NewForConfig(config)
+	if err != nil {
+		r.Log.Error(err, " error on in cluster config client")
+		return nil, err
+	}
+	return clientset, err
+}
+
+func (r *InstallerReconciler) GetConfigMap(namespace string, name string, client *v12.CoreV1Client) (*v1.ConfigMap, error) {
+	ctx := context.Background()
+	cm, err := client.ConfigMaps(namespace).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	} else {
+		return cm, nil
+	}
+}
+
+func (r *InstallerReconciler) CreateConfigMap(namespace string, cm *v1.ConfigMap, client *v12.CoreV1Client) (*v1.ConfigMap, error) {
+	ctx := context.Background()
+	cm, err := client.ConfigMaps(namespace).Create(ctx, cm, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	} else {
+		return cm, nil
+	}
+}
+
+func (r *InstallerReconciler) getUCID() (string, error) {
+	ucid, found := r.cache.Get(DevtronUniqueClientIdConfigMapKey)
+	if found {
+		return ucid.(string), nil
+	} else {
+		client, err := r.GetClientForInCluster()
+		if err != nil {
+			r.Log.Error(err, "exception while getting unique client id")
+			return "", err
+		}
+
+		cm, err := r.GetConfigMap(DevtronNamespace, DevtronUniqueClientIdConfigMap, client)
+		if errStatus, ok := status.FromError(err); !ok || errStatus.Code() == codes.NotFound || errStatus.Code() == codes.Unknown {
+			// if not found, create new cm
+			cm = &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: DevtronUniqueClientIdConfigMap}}
+			data := map[string]string{}
+			data[DevtronUniqueClientIdConfigMapKey] = Generate(16) // generate unique random number
+			cm.Data = data
+			_, err = r.CreateConfigMap(DevtronNamespace, cm, client)
+			if err != nil {
+				r.Log.Error(err, "exception while getting unique client id")
+				return "", err
+			}
+		}
+		dataMap := cm.Data
+		ucid = dataMap[DevtronUniqueClientIdConfigMapKey]
+		r.cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
+		if cm == nil {
+			r.Log.Error(err, "configmap not found while getting unique client id", "cm", cm)
+			return ucid.(string), err
+		}
+	}
+	return ucid.(string), nil
+}
+
+var chars = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
+
+func Generate(size int) string {
+	var b strings.Builder
+	for i := 0; i < size; i++ {
+		b.WriteRune(chars[rand.Intn(len(chars))])
+	}
+	str := b.String()
+	return str
 }

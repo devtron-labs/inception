@@ -19,12 +19,12 @@ package main
 import (
 	"flag"
 	"github.com/devtron-labs/inception/pkg/language"
-	"os"
-
+	"github.com/posthog/posthog-go"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
@@ -68,11 +68,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	client, _ := posthog.NewWithConfig("cfg.ApiKey", posthog.Config{Endpoint: "cfg.PosthogEndpoint"})
+	//defer client.Close()
+
 	if err = (&controllers.InstallerReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Installer"),
-		Scheme: mgr.GetScheme(),
-		Mapper: language.NewMapperFactory(),
+		Client:        mgr.GetClient(),
+		Log:           ctrl.Log.WithName("controllers").WithName("Installer"),
+		Scheme:        mgr.GetScheme(),
+		Mapper:        language.NewMapperFactory(),
+		PosthogClient: client,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Installer")
 		os.Exit(1)

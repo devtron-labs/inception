@@ -11,12 +11,15 @@ require (
 	github.com/google/go-cmp v0.5.2
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
+	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
+	github.com/posthog/posthog-go v0.0.0-20210616140600-8bebac98515e // indirect
 	github.com/sirupsen/logrus v1.6.0
 	github.com/tidwall/gjson v1.6.6
 	github.com/tidwall/sjson v1.1.1
+	k8s.io/api v0.21.2 // indirect
 	k8s.io/apiextensions-apiserver v0.20.7
-	k8s.io/apimachinery v0.20.7
-	k8s.io/client-go v0.20.7
+	k8s.io/apimachinery v0.21.2
+	k8s.io/client-go v1.5.2
 	k8s.io/klog v1.0.0
 	k8s.io/kubectl v0.20.7
 	k8s.io/utils v0.0.0-20201110183641-67b214c5f920
