@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"time"
 
+	"github.com/caarlos0/env"
 	installerv1alpha1 "github.com/devtron-labs/inception/api/v1alpha1"
 	"github.com/devtron-labs/inception/controllers"
 	// +kubebuilder:scaffold:imports
@@ -45,6 +46,12 @@ func init() {
 
 	utilruntime.Must(installerv1alpha1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
+}
+
+type PosthogConfig struct {
+	PosthogApiKey   string `env:"POSTHOG_API_KEY" envDefault:""`
+	PosthogEndpoint string `env:"POSTHOG_ENDPOINT" envDefault:"https://app.posthog.com"`
+	CacheExpiry     int    `env:"CACHE_EXPIRY" envDefault:"120"`
 }
 
 func main() {
@@ -70,9 +77,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	client, _ := posthog.NewWithConfig("cfg.ApiKey", posthog.Config{Endpoint: "cfg.PosthogEndpoint"})
+	cfg := &PosthogConfig{}
+	err = env.Parse(cfg)
+	if err != nil {
+		setupLog.Error(err, "exception caught while parsing posthog config")
+		os.Exit(1)
+	}
+
+	client, _ := posthog.NewWithConfig(cfg.PosthogApiKey, posthog.Config{Endpoint: cfg.PosthogEndpoint})
 	//defer client.Close()
-	d := time.Duration(120)
+	d := time.Duration(cfg.CacheExpiry)
 	c := cache.New(d*time.Minute, 240*time.Minute)
 
 	if err = (&controllers.InstallerReconciler{
