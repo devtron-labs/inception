@@ -39,13 +39,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	v12 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
-	"math/rand"
 	"net/http"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"strings"
 	"time"
 )
 
@@ -158,6 +156,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		}
 	}
 
+	//TODO - setup correct event trigger points
 	if updated {
 		fmt.Println("updating")
 		err = r.Client.Update(context.Background(), installer)
@@ -181,11 +180,13 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 		r.Log.Error(err, "telemetry event to posthog from operator, payload unmarshal error")
 		return nil
 	}
-	r.PosthogClient.Enqueue(posthog.Capture{
-		DistinctId: payload.UCID,
-		Event:      payload.EventType.String(),
-		Properties: prop,
-	})
+	if r.PosthogClient != nil {
+		r.PosthogClient.Enqueue(posthog.Capture{
+			DistinctId: payload.UCID,
+			Event:      payload.EventType.String(),
+			Properties: prop,
+		})
+	}
 	return nil
 }
 
@@ -370,7 +371,7 @@ func (r *InstallerReconciler) getUCID() (string, error) {
 			// if not found, create new cm
 			cm = &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: DevtronUniqueClientIdConfigMap}}
 			data := map[string]string{}
-			data[DevtronUniqueClientIdConfigMapKey] = Generate(16) // generate unique random number
+			data[DevtronUniqueClientIdConfigMapKey] = language.Generate(16) // generate unique random number
 			cm.Data = data
 			_, err = r.CreateConfigMap(DevtronNamespace, cm, client)
 			if err != nil {
@@ -387,15 +388,4 @@ func (r *InstallerReconciler) getUCID() (string, error) {
 		}
 	}
 	return ucid.(string), nil
-}
-
-var chars = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
-
-func Generate(size int) string {
-	var b strings.Builder
-	for i := 0; i < size; i++ {
-		b.WriteRune(chars[rand.Intn(len(chars))])
-	}
-	str := b.String()
-	return str
 }
