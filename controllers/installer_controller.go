@@ -83,6 +83,7 @@ type TelemetryEventDto struct {
 	DevtronVersion string             `json:"devtronVersion,omitempty"`
 }
 
+//TODO: We should extract out the array, it will result in waste of memory
 func (d TelemetryEventType) String() string {
 	return [...]string{"Heartbeat", "InstallationStart", "InstallationSuccess", "InstallationFailure", "UpgradeSuccess", "UpgradeFailure", "Summary"}[d]
 }
@@ -118,8 +119,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		updated = true
 		UCID, err := r.getUCID()
 		if err != nil {
+			//TODO: this is not failed event
 			r.Log.Error(err, "failed to send event to posthog")
 		}
+		//TODO: If err != nil then there is no point in sending it
+		//TODO: this is not upgrade success, it can be  start of new installation or upgrade..
+		//TODO: if there is no configmap and UCID in that then it is start of fresh installation otherwise start of upgrade
 		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeSuccess, DevtronVersion: "v1"}
 		err = r.sendEvent(payload)
 		if err != nil {
@@ -134,8 +139,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		updated = true
 		UCID, err := r.getUCID()
 		if err != nil {
+			//TODO: this is not failed event
 			r.Log.Error(err, "failed to send event to posthog")
 		}
+		//TODO: If err != nil then there is no point in sending it
+		//TODO: this is not install success, it can be  start of new installation or upgrade..
+		//TODO: if there is no configmap and UCID in that then it is step 2 of installation otherwise of upgrade
 		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationSuccess, DevtronVersion: "v1"}
 		err = r.sendEvent(payload)
 		if err != nil {
@@ -147,8 +156,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		updated = true
 		UCID, err := r.getUCID()
 		if err != nil {
+			//TODO: this is not failed event
 			r.Log.Error(err, "failed to send event to posthog")
 		}
+		//TODO: If err != nil then there is no point in sending it
+		//TODO: this is not install success, it can be  start of new installation or upgrade..
+		//TODO: if there is no configmap and UCID in that then it is step 3 of installation otherwise of upgrade
 		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
 		err = r.sendEvent(payload)
 		if err != nil {
@@ -163,6 +176,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err != nil {
 			return reconcile.Result{}, err
 		}
+		//TODO: if error is nill then its success of installation or upgrade else its failure
 	}
 	return ctrl.Result{}, nil
 }
@@ -357,20 +371,22 @@ func (r *InstallerReconciler) CreateConfigMap(namespace string, cm *v1.ConfigMap
 
 func (r *InstallerReconciler) getUCID() (string, error) {
 	ucid, found := r.Cache.Get(DevtronUniqueClientIdConfigMapKey)
+	//TODO: refactor the code to include only one if condition i.e; if !found {
 	if found {
 		return ucid.(string), nil
 	} else {
+		//TODO: use r.Client instead of creating new client
 		client, err := r.GetClientForInCluster()
 		if err != nil {
 			r.Log.Error(err, "exception while getting unique client id")
 			return "", err
 		}
-
 		cm, err := r.GetConfigMap(DevtronNamespace, DevtronUniqueClientIdConfigMap, client)
 		if errStatus, ok := status.FromError(err); !ok || errStatus.Code() == codes.NotFound || errStatus.Code() == codes.Unknown {
 			// if not found, create new cm
 			cm = &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: DevtronUniqueClientIdConfigMap}}
 			data := map[string]string{}
+			//TODO: we can rather use SHA1 to generate uniqueId, that has low chances of collision
 			data[DevtronUniqueClientIdConfigMapKey] = language.Generate(16) // generate unique random number
 			cm.Data = data
 			_, err = r.CreateConfigMap(DevtronNamespace, cm, client)
@@ -382,6 +398,7 @@ func (r *InstallerReconciler) getUCID() (string, error) {
 		dataMap := cm.Data
 		ucid = dataMap[DevtronUniqueClientIdConfigMapKey]
 		r.Cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
+		//TODO: should be cm != nil
 		if cm == nil {
 			r.Log.Error(err, "configmap not found while getting unique client id", "cm", cm)
 			return ucid.(string), err
