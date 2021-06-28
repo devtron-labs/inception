@@ -67,8 +67,11 @@ type TelemetryEventType int
 const (
 	Heartbeat TelemetryEventType = iota
 	InstallationStart
+	InstallationInProgress
 	InstallationSuccess
 	InstallationFailure
+	UpgradeStart
+	UpgradeInProgress
 	UpgradeSuccess
 	UpgradeFailure
 	Summary
@@ -125,7 +128,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not upgrade success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is start of fresh installation otherwise start of upgrade
-		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeSuccess, DevtronVersion: "v1"}
+		var payload *TelemetryEventDto
+		if len(UCID) == 0 {
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
+		} else {
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeStart, DevtronVersion: "v1"}
+		}
 		err = r.sendEvent(payload)
 		if err != nil {
 			r.Log.Error(err, "failed to send event to posthog")
@@ -145,7 +153,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not install success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is step 2 of installation otherwise of upgrade
-		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationSuccess, DevtronVersion: "v1"}
+		var payload *TelemetryEventDto
+		if len(UCID) == 0 {
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
+		} else {
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
+		}
 		err = r.sendEvent(payload)
 		if err != nil {
 			r.Log.Error(err, "failed to send event to posthog")
@@ -162,7 +175,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not install success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is step 3 of installation otherwise of upgrade
-		payload := &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
+		var payload *TelemetryEventDto
+		if len(UCID) == 0 {
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
+		} else {
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
+		}
 		err = r.sendEvent(payload)
 		if err != nil {
 			r.Log.Error(err, "failed to send event to posthog")
@@ -172,9 +190,30 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	//TODO - setup correct event trigger points
 	if updated {
 		fmt.Println("updating")
+		var payload *TelemetryEventDto
+		UCID, err := r.getUCID()
+		if err != nil {
+			//TODO: this is not failed event
+			r.Log.Error(err, "failed to send event to posthog")
+		}
 		err = r.Client.Update(context.Background(), installer)
 		if err != nil {
+			if len(UCID) == 0 {
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationFailure, DevtronVersion: "v1"}
+			} else {
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeFailure, DevtronVersion: "v1"}
+			}
 			return reconcile.Result{}, err
+		} else {
+			if len(UCID) == 0 {
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationSuccess, DevtronVersion: "v1"}
+			} else {
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeSuccess, DevtronVersion: "v1"}
+			}
+		}
+		err = r.sendEvent(payload)
+		if err != nil {
+			r.Log.Error(err, "failed to send event to posthog")
 		}
 		//TODO: if error is nill then its success of installation or upgrade else its failure
 	}
