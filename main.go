@@ -17,13 +17,17 @@ limitations under the License.
 package main
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"github.com/devtron-labs/inception/pkg/language"
 	"github.com/posthog/posthog-go"
+	"io/ioutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	"net/http"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -49,9 +53,10 @@ func init() {
 }
 
 type PosthogConfig struct {
-	PosthogApiKey   string `env:"POSTHOG_API_KEY" envDefault:""`
-	PosthogEndpoint string `env:"POSTHOG_ENDPOINT" envDefault:"https://app.posthog.com"`
-	CacheExpiry     int    `env:"CACHE_EXPIRY" envDefault:"120"`
+	PosthogApiKey           string `env:"POSTHOG_API_KEY" envDefault:""`
+	PosthogEndpoint         string `env:"POSTHOG_ENDPOINT" envDefault:"https://app.posthog.com"`
+	CacheExpiry             int    `env:"CACHE_EXPIRY" envDefault:"120"`
+	TelemetryApiKeyEndpoint string `env:"TELEMETRY_API_KEY_ENDPOINT" envDefault:"aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9hcGlrZXk="`
 }
 
 func main() {
@@ -84,6 +89,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	if len(cfg.PosthogApiKey) == 0 {
+		_, apiKey, err := getPosthogApiKey(cfg.TelemetryApiKeyEndpoint)
+		if err != nil {
+			setupLog.Error(err, "exception caught while getting api key")
+		}
+		cfg.PosthogApiKey = apiKey
+	}
 	client, _ := posthog.NewWithConfig(cfg.PosthogApiKey, posthog.Config{Endpoint: cfg.PosthogEndpoint})
 	//defer client.Close()
 	d := time.Duration(cfg.CacheExpiry)
@@ -107,4 +119,40 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+func getPosthogApiKey(encodedPosthogApiKeyUrl string) (string, string, error) {
+	dncodedPosthogApiKeyUrl, err := base64.StdEncoding.DecodeString(encodedPosthogApiKeyUrl)
+	if err != nil {
+		return "", "", err
+	}
+	apiKeyUrl := string(dncodedPosthogApiKeyUrl)
+	req, err := http.NewRequest(http.MethodGet, apiKeyUrl, nil)
+	if err != nil {
+		return "", "", err
+	}
+	//var client *http.Client
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return "", "", err
+	}
+	if res.StatusCode >= 200 && res.StatusCode <= 299 {
+		resBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return "", "", err
+		}
+		var apiRes map[string]interface{}
+		err = json.Unmarshal(resBody, &apiRes)
+		if err != nil {
+			return "", "", err
+		}
+		encodedApiKey := apiRes["result"].(string)
+		apiKey, err := base64.StdEncoding.DecodeString(encodedApiKey)
+		if err != nil {
+			return "", "", err
+		}
+		return encodedApiKey, string(apiKey), err
+	}
+	return "", "", err
 }
