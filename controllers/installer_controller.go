@@ -114,13 +114,13 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 	updated := false
 
+	var payload *TelemetryEventDto
 	installedEvent := false
 	UCID, cm, err := r.getUCID(false)
 	if err != nil {
 		//TODO: this is not failed event
 		r.Log.Error(err, "failed to send event to posthog")
 	}
-
 	if cm != nil && cm.Data != nil {
 		dataMap := cm.Data
 		status := dataMap["status"]
@@ -139,19 +139,10 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not upgrade success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is start of fresh installation otherwise start of upgrade
-		var payload *TelemetryEventDto
 		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeStart, DevtronVersion: "v1"}
-		}
-		err = r.sendEvent(payload)
-		if err != nil {
-			r.Log.Error(err, "failed to send event to posthog")
-		}
-		err = r.updateStatusOnCm(cm, payload.EventType)
-		if err != nil {
-			r.Log.Error(err, "failed to update cm")
 		}
 	} else if shouldDownload(installer) {
 		fmt.Println("should download")
@@ -163,19 +154,10 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not install success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is step 2 of installation otherwise of upgrade
-		var payload *TelemetryEventDto
 		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
-		}
-		err = r.sendEvent(payload)
-		if err != nil {
-			r.Log.Error(err, "failed to send event to posthog")
-		}
-		err = r.updateStatusOnCm(cm, payload.EventType)
-		if err != nil {
-			r.Log.Error(err, "failed to update cm")
 		}
 	} else if shouldApply(installer) {
 		fmt.Println("applying")
@@ -184,32 +166,31 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not install success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is step 3 of installation otherwise of upgrade
-		var payload *TelemetryEventDto
 		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
-		}
-		err = r.sendEvent(payload)
-		if err != nil {
-			r.Log.Error(err, "failed to send event to posthog")
-		}
-		err = r.updateStatusOnCm(cm, payload.EventType)
-		if err != nil {
-			r.Log.Error(err, "failed to update cm")
 		}
 	}
 
 	//TODO - setup correct event trigger points
 	if updated {
 		fmt.Println("updating")
-		var payload *TelemetryEventDto
 		err = r.Client.Update(context.Background(), installer)
+		//TODO: if error is nill then its success of installation or upgrade else its failure
 		if err != nil {
 			if len(UCID) == 0 || installedEvent {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationFailure, DevtronVersion: "v1"}
 			} else {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeFailure, DevtronVersion: "v1"}
+			}
+			err = r.sendEvent(payload)
+			if err != nil {
+				r.Log.Error(err, "failed to send event to posthog")
+			}
+			err = r.updateStatusOnCm(cm, payload.EventType)
+			if err != nil {
+				r.Log.Error(err, "failed to update cm")
 			}
 			return reconcile.Result{}, err
 		} else {
@@ -219,15 +200,14 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeSuccess, DevtronVersion: "v1"}
 			}
 		}
-		err = r.sendEvent(payload)
-		if err != nil {
-			r.Log.Error(err, "failed to send event to posthog")
-		}
-		//TODO: if error is nill then its success of installation or upgrade else its failure
-		err = r.updateStatusOnCm(cm, payload.EventType)
-		if err != nil {
-			r.Log.Error(err, "failed to update cm")
-		}
+	}
+	err = r.sendEvent(payload)
+	if err != nil {
+		r.Log.Error(err, "failed to send event to posthog")
+	}
+	err = r.updateStatusOnCm(cm, payload.EventType)
+	if err != nil {
+		r.Log.Error(err, "failed to update cm")
 	}
 	return ctrl.Result{}, nil
 }
