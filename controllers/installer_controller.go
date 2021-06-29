@@ -113,6 +113,22 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return reconcile.Result{}, fmt.Errorf("url is not specified")
 	}
 	updated := false
+
+	installedEvent := false
+	UCID, cm, err := r.getUCID(false)
+	if err != nil {
+		//TODO: this is not failed event
+		r.Log.Error(err, "failed to send event to posthog")
+	}
+
+	if cm != nil && cm.Data != nil {
+		dataMap := cm.Data
+		status := dataMap["status"]
+		if status == InstallationStart.String() || status == InstallationInProgress.String() ||
+			status == InstallationFailure.String() {
+			installedEvent = true
+		}
+	}
 	if hasSpecChanged(installer) {
 		fmt.Println("url changed")
 		installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeOutOfSync
@@ -120,16 +136,11 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		installer.Status.Sync.URL = installer.Spec.URL
 		installer.Spec.ReSync = false
 		updated = true
-		UCID, err := r.getUCID()
-		if err != nil {
-			//TODO: this is not failed event
-			r.Log.Error(err, "failed to send event to posthog")
-		}
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not upgrade success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is start of fresh installation otherwise start of upgrade
 		var payload *TelemetryEventDto
-		if len(UCID) == 0 {
+		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeStart, DevtronVersion: "v1"}
@@ -138,6 +149,10 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err != nil {
 			r.Log.Error(err, "failed to send event to posthog")
 		}
+		err = r.updateStatusOnCm(cm, payload.EventType)
+		if err != nil {
+			r.Log.Error(err, "failed to update cm")
+		}
 	} else if shouldDownload(installer) {
 		fmt.Println("should download")
 		err := r.sync(installer)
@@ -145,16 +160,11 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return reconcile.Result{}, err
 		}
 		updated = true
-		UCID, err := r.getUCID()
-		if err != nil {
-			//TODO: this is not failed event
-			r.Log.Error(err, "failed to send event to posthog")
-		}
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not install success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is step 2 of installation otherwise of upgrade
 		var payload *TelemetryEventDto
-		if len(UCID) == 0 {
+		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
@@ -162,21 +172,20 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		err = r.sendEvent(payload)
 		if err != nil {
 			r.Log.Error(err, "failed to send event to posthog")
+		}
+		err = r.updateStatusOnCm(cm, payload.EventType)
+		if err != nil {
+			r.Log.Error(err, "failed to update cm")
 		}
 	} else if shouldApply(installer) {
 		fmt.Println("applying")
 		r.apply(installer)
 		updated = true
-		UCID, err := r.getUCID()
-		if err != nil {
-			//TODO: this is not failed event
-			r.Log.Error(err, "failed to send event to posthog")
-		}
 		//TODO: If err != nil then there is no point in sending it
 		//TODO: this is not install success, it can be  start of new installation or upgrade..
 		//TODO: if there is no configmap and UCID in that then it is step 3 of installation otherwise of upgrade
 		var payload *TelemetryEventDto
-		if len(UCID) == 0 {
+		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
@@ -184,6 +193,10 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		err = r.sendEvent(payload)
 		if err != nil {
 			r.Log.Error(err, "failed to send event to posthog")
+		}
+		err = r.updateStatusOnCm(cm, payload.EventType)
+		if err != nil {
+			r.Log.Error(err, "failed to update cm")
 		}
 	}
 
@@ -191,14 +204,9 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if updated {
 		fmt.Println("updating")
 		var payload *TelemetryEventDto
-		UCID, err := r.getUCID()
-		if err != nil {
-			//TODO: this is not failed event
-			r.Log.Error(err, "failed to send event to posthog")
-		}
 		err = r.Client.Update(context.Background(), installer)
 		if err != nil {
-			if len(UCID) == 0 {
+			if len(UCID) == 0 || installedEvent {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationFailure, DevtronVersion: "v1"}
 			} else {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeFailure, DevtronVersion: "v1"}
@@ -216,6 +224,10 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			r.Log.Error(err, "failed to send event to posthog")
 		}
 		//TODO: if error is nill then its success of installation or upgrade else its failure
+		err = r.updateStatusOnCm(cm, payload.EventType)
+		if err != nil {
+			r.Log.Error(err, "failed to update cm")
+		}
 	}
 	return ctrl.Result{}, nil
 }
@@ -408,19 +420,47 @@ func (r *InstallerReconciler) CreateConfigMap(namespace string, cm *v1.ConfigMap
 	}
 }
 
-func (r *InstallerReconciler) getUCID() (string, error) {
+func (r *InstallerReconciler) UpdateConfigMap(namespace string, cm *v1.ConfigMap, client *v12.CoreV1Client) (*v1.ConfigMap, error) {
+	ctx := context.Background()
+	cm, err := client.ConfigMaps(namespace).Update(ctx, cm, metav1.UpdateOptions{})
+	if err != nil {
+		return nil, err
+	} else {
+		return cm, nil
+	}
+}
+
+func (r *InstallerReconciler) updateStatusOnCm(cm *v1.ConfigMap, eventType TelemetryEventType) error {
+	client, err := r.GetClientForInCluster()
+	if err != nil {
+		r.Log.Error(err, "exception while update updateStatusOnCm")
+		return err
+	}
+	dataMap := cm.Data
+	dataMap["status"] = eventType.String()
+	cm.Data = dataMap
+	_, err = r.UpdateConfigMap(DevtronNamespace, cm, client)
+	if err != nil {
+		r.Log.Error(err, "exception while update updateStatusOnCm")
+		return err
+	}
+	return nil
+}
+
+func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, error) {
+	var cm *v1.ConfigMap
 	ucid, found := r.Cache.Get(DevtronUniqueClientIdConfigMapKey)
 	//TODO: refactor the code to include only one if condition i.e; if !found {
-	if found {
-		return ucid.(string), nil
+	if found && fromCache {
+		return ucid.(string), cm, nil
 	} else {
 		//TODO: use r.Client instead of creating new client
 		client, err := r.GetClientForInCluster()
 		if err != nil {
 			r.Log.Error(err, "exception while getting unique client id")
-			return "", err
+			return ucid.(string), cm, nil
 		}
-		cm, err := r.GetConfigMap(DevtronNamespace, DevtronUniqueClientIdConfigMap, client)
+		cm, err = r.GetConfigMap(DevtronNamespace, DevtronUniqueClientIdConfigMap, client)
 		if errStatus, ok := status.FromError(err); !ok || errStatus.Code() == codes.NotFound || errStatus.Code() == codes.Unknown {
 			// if not found, create new cm
 			cm = &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: DevtronUniqueClientIdConfigMap}}
@@ -431,7 +471,7 @@ func (r *InstallerReconciler) getUCID() (string, error) {
 			_, err = r.CreateConfigMap(DevtronNamespace, cm, client)
 			if err != nil {
 				r.Log.Error(err, "exception while getting unique client id")
-				return "", err
+				return ucid.(string), cm, nil
 			}
 		}
 		dataMap := cm.Data
@@ -440,8 +480,8 @@ func (r *InstallerReconciler) getUCID() (string, error) {
 		//TODO: should be cm != nil
 		if cm == nil {
 			r.Log.Error(err, "configmap not found while getting unique client id", "cm", cm)
-			return ucid.(string), err
+			return ucid.(string), cm, nil
 		}
 	}
-	return ucid.(string), nil
+	return ucid.(string), cm, nil
 }
