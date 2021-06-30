@@ -147,9 +147,8 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	//TODO - setup correct event trigger points
-	if !updated {
+	if updated {
 		fmt.Println("updating")
-
 		var payload *TelemetryEventDto
 		fromCache := true
 		if installEvent == -1 {
