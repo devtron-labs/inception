@@ -110,7 +110,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	updated := false
 
 	var payload *TelemetryEventDto
-	installedEvent := false
+	installEvent := false
 	UCID, cm, err := r.getUCID(false)
 	if err != nil {
 		//TODO: this is not failed event
@@ -121,7 +121,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		status := dataMap["status"]
 		if status == InstallationStart || status == InstallationInProgress ||
 			status == InstallationFailure {
-			installedEvent = true
+			installEvent = true
 		}
 	}
 	if hasSpecChanged(installer) {
@@ -131,7 +131,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		installer.Status.Sync.URL = installer.Spec.URL
 		installer.Spec.ReSync = false
 		updated = true
-		if len(UCID) == 0 || installedEvent {
+		if len(UCID) == 0 || installEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeStart, DevtronVersion: "v1"}
@@ -143,7 +143,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return reconcile.Result{}, err
 		}
 		updated = true
-		if len(UCID) == 0 || installedEvent {
+		if len(UCID) == 0 || installEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
@@ -152,7 +152,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		fmt.Println("applying")
 		r.apply(installer)
 		updated = true
-		if len(UCID) == 0 || installedEvent {
+		if len(UCID) == 0 || installEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
@@ -164,7 +164,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		fmt.Println("updating")
 		err = r.Client.Update(context.Background(), installer)
 		if err != nil {
-			if len(UCID) == 0 || installedEvent {
+			if len(UCID) == 0 || installEvent {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationFailure, DevtronVersion: "v1"}
 			} else {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeFailure, DevtronVersion: "v1"}
