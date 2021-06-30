@@ -65,30 +65,25 @@ const DevtronNamespace = "devtroncd"
 type TelemetryEventType int
 
 const (
-	Heartbeat TelemetryEventType = iota
-	InstallationStart
-	InstallationInProgress
-	InstallationSuccess
-	InstallationFailure
-	UpgradeStart
-	UpgradeInProgress
-	UpgradeSuccess
-	UpgradeFailure
-	Summary
+	Heartbeat              string = "Heartbeat"
+	InstallationStart      string = "InstallationStart"
+	InstallationInProgress string = "InstallationInProgress"
+	InstallationSuccess    string = "InstallationSuccess"
+	InstallationFailure    string = "InstallationFailure"
+	UpgradeStart           string = "UpgradeStart"
+	UpgradeInProgress      string = "UpgradeInProgress"
+	UpgradeSuccess         string = "UpgradeSuccess"
+	UpgradeFailure         string = "UpgradeFailure"
+	Summary                string = "Summary"
 )
 
 type TelemetryEventDto struct {
-	UCID           string             `json:"ucid"` //unique client id
-	Timestamp      time.Time          `json:"timestamp"`
-	EventMessage   string             `json:"eventMessage,omitempty"`
-	EventType      TelemetryEventType `json:"eventType"`
-	ServerVersion  string             `json:"serverVersion,omitempty"`
-	DevtronVersion string             `json:"devtronVersion,omitempty"`
-}
-
-//TODO: We should extract out the array, it will result in waste of memory
-func (d TelemetryEventType) String() string {
-	return [...]string{"Heartbeat", "InstallationStart", "InstallationSuccess", "InstallationFailure", "UpgradeSuccess", "UpgradeFailure", "Summary"}[d]
+	UCID           string    `json:"ucid"` //unique client id
+	Timestamp      time.Time `json:"timestamp"`
+	EventMessage   string    `json:"eventMessage,omitempty"`
+	EventType      string    `json:"eventType"`
+	ServerVersion  string    `json:"serverVersion,omitempty"`
+	DevtronVersion string    `json:"devtronVersion,omitempty"`
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
@@ -124,8 +119,8 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if cm != nil && cm.Data != nil {
 		dataMap := cm.Data
 		status := dataMap["status"]
-		if status == InstallationStart.String() || status == InstallationInProgress.String() ||
-			status == InstallationFailure.String() {
+		if status == InstallationStart || status == InstallationInProgress ||
+			status == InstallationFailure {
 			installedEvent = true
 		}
 	}
@@ -136,9 +131,6 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		installer.Status.Sync.URL = installer.Spec.URL
 		installer.Spec.ReSync = false
 		updated = true
-		//TODO: If err != nil then there is no point in sending it
-		//TODO: this is not upgrade success, it can be  start of new installation or upgrade..
-		//TODO: if there is no configmap and UCID in that then it is start of fresh installation otherwise start of upgrade
 		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
 		} else {
@@ -151,9 +143,6 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return reconcile.Result{}, err
 		}
 		updated = true
-		//TODO: If err != nil then there is no point in sending it
-		//TODO: this is not install success, it can be  start of new installation or upgrade..
-		//TODO: if there is no configmap and UCID in that then it is step 2 of installation otherwise of upgrade
 		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
@@ -163,9 +152,6 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		fmt.Println("applying")
 		r.apply(installer)
 		updated = true
-		//TODO: If err != nil then there is no point in sending it
-		//TODO: this is not install success, it can be  start of new installation or upgrade..
-		//TODO: if there is no configmap and UCID in that then it is step 3 of installation otherwise of upgrade
 		if len(UCID) == 0 || installedEvent {
 			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
 		} else {
@@ -177,7 +163,6 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if updated {
 		fmt.Println("updating")
 		err = r.Client.Update(context.Background(), installer)
-		//TODO: if error is nill then its success of installation or upgrade else its failure
 		if err != nil {
 			if len(UCID) == 0 || installedEvent {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationFailure, DevtronVersion: "v1"}
@@ -228,7 +213,7 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 	if r.PosthogClient != nil {
 		r.PosthogClient.Enqueue(posthog.Capture{
 			DistinctId: payload.UCID,
-			Event:      payload.EventType.String(),
+			Event:      payload.EventType,
 			Properties: prop,
 		})
 	}
@@ -410,14 +395,14 @@ func (r *InstallerReconciler) UpdateConfigMap(namespace string, cm *v1.ConfigMap
 	}
 }
 
-func (r *InstallerReconciler) updateStatusOnCm(cm *v1.ConfigMap, eventType TelemetryEventType) error {
+func (r *InstallerReconciler) updateStatusOnCm(cm *v1.ConfigMap, eventType string) error {
 	client, err := r.GetClientForInCluster()
 	if err != nil {
 		r.Log.Error(err, "exception while update updateStatusOnCm")
 		return err
 	}
 	dataMap := cm.Data
-	dataMap["status"] = eventType.String()
+	dataMap["status"] = eventType
 	cm.Data = dataMap
 	_, err = r.UpdateConfigMap(DevtronNamespace, cm, client)
 	if err != nil {
