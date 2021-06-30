@@ -44,6 +44,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strconv"
 	"time"
 )
 
@@ -60,34 +61,47 @@ type InstallerReconciler struct {
 
 const DevtronUniqueClientIdConfigMap = "devtron-ucid"
 const DevtronUniqueClientIdConfigMapKey = "UCID"
+const InstallEventKey = "installEvent"
 const DevtronNamespace = "devtroncd"
 
-type TelemetryEventType int
+type TelemetryEventType string
 
 const (
-	Heartbeat              string = "Heartbeat"
-	InstallationStart      string = "InstallationStart"
-	InstallationInProgress string = "InstallationInProgress"
-	InstallationSuccess    string = "InstallationSuccess"
-	InstallationFailure    string = "InstallationFailure"
-	UpgradeStart           string = "UpgradeStart"
-	UpgradeInProgress      string = "UpgradeInProgress"
-	UpgradeSuccess         string = "UpgradeSuccess"
-	UpgradeFailure         string = "UpgradeFailure"
-	Summary                string = "Summary"
+	Heartbeat              TelemetryEventType = "Heartbeat"
+	InstallationStart      TelemetryEventType = "InstallationStart"
+	InstallationInProgress TelemetryEventType = "InstallationInProgress"
+	InstallationInterrupt  TelemetryEventType = "InstallationInterrupt"
+	InstallationSuccess    TelemetryEventType = "InstallationSuccess"
+	InstallationFailure    TelemetryEventType = "InstallationFailure"
+	UpgradeStart           TelemetryEventType = "UpgradeStart"
+	UpgradeInProgress      TelemetryEventType = "UpgradeInProgress"
+	UpgradeInterrupt       TelemetryEventType = "UpgradeInterrupt"
+	UpgradeSuccess         TelemetryEventType = "UpgradeSuccess"
+	UpgradeFailure         TelemetryEventType = "UpgradeFailure"
+	Summary                TelemetryEventType = "Summary"
 )
 
 type TelemetryEventDto struct {
-	UCID           string    `json:"ucid"` //unique client id
-	Timestamp      time.Time `json:"timestamp"`
-	EventMessage   string    `json:"eventMessage,omitempty"`
-	EventType      string    `json:"eventType"`
-	ServerVersion  string    `json:"serverVersion,omitempty"`
-	DevtronVersion string    `json:"devtronVersion,omitempty"`
+	UCID           string             `json:"ucid"` //unique client id
+	Timestamp      time.Time          `json:"timestamp"`
+	EventMessage   string             `json:"eventMessage,omitempty"`
+	EventType      TelemetryEventType `json:"eventType"`
+	ServerVersion  string             `json:"serverVersion,omitempty"`
+	DevtronVersion string             `json:"devtronVersion,omitempty"`
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers/status,verbs=get;update;patch
+var installEvent = -1
+var objectEventType ObjectEventType
+
+type ObjectEventType string
+
+const (
+	SpecChanged ObjectEventType = "SpecChanged"
+	Downloaded  ObjectEventType = "Downloaded"
+	Applied     ObjectEventType = "Applied"
+)
 
 func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
@@ -109,21 +123,6 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 	updated := false
 
-	var payload *TelemetryEventDto
-	installEvent := false
-	UCID, cm, err := r.getUCID(false)
-	if err != nil {
-		//TODO: this is not failed event
-		r.Log.Error(err, "failed to send event to posthog")
-	}
-	if cm != nil && cm.Data != nil {
-		dataMap := cm.Data
-		status := dataMap["status"]
-		if status == InstallationStart || status == InstallationInProgress ||
-			status == InstallationFailure {
-			installEvent = true
-		}
-	}
 	if hasSpecChanged(installer) {
 		fmt.Println("url changed")
 		installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeOutOfSync
@@ -131,11 +130,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		installer.Status.Sync.URL = installer.Spec.URL
 		installer.Spec.ReSync = false
 		updated = true
-		if len(UCID) == 0 || installEvent {
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationStart, DevtronVersion: "v1"}
-		} else {
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeStart, DevtronVersion: "v1"}
-		}
+		objectEventType = SpecChanged
 	} else if shouldDownload(installer) {
 		fmt.Println("should download")
 		err := r.sync(installer)
@@ -143,56 +138,76 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return reconcile.Result{}, err
 		}
 		updated = true
-		if len(UCID) == 0 || installEvent {
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
-		} else {
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
-		}
+		objectEventType = Downloaded
 	} else if shouldApply(installer) {
 		fmt.Println("applying")
 		r.apply(installer)
 		updated = true
-		if len(UCID) == 0 || installEvent {
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInProgress, DevtronVersion: "v1"}
-		} else {
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInProgress, DevtronVersion: "v1"}
-		}
+		objectEventType = Applied
 	}
 
 	//TODO - setup correct event trigger points
-	if updated {
+	if !updated {
 		fmt.Println("updating")
+
+		var payload *TelemetryEventDto
+		fromCache := true
+		if installEvent == -1 {
+			fromCache = false
+		}
+		UCID, cm, err := r.getUCID(fromCache)
+		if err != nil {
+			r.Log.Error(err, "failed to get ucid from config map")
+		}
+		if cm != nil && cm.Data != nil && installEvent == -1 {
+			dataMap := cm.Data
+			installEventStr := dataMap["installEvent"]
+			installEvent, err = strconv.Atoi(installEventStr)
+			if err != nil {
+				installEvent = 1 // there might be no key in first time in cm get
+				r.Log.Error(err, "failed to fet install event status from cm")
+			}
+		}
 		err = r.Client.Update(context.Background(), installer)
 		if err != nil {
-			if len(UCID) == 0 || installEvent {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationFailure, DevtronVersion: "v1"}
-			} else {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeFailure, DevtronVersion: "v1"}
+			if installEvent == 1 {
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInterrupt, DevtronVersion: "v1"}
+			} else if installEvent == 2 {
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInterrupt, DevtronVersion: "v1"}
 			}
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
 			}
-			err = r.updateStatusOnCm(cm, payload.EventType)
-			if err != nil {
-				r.Log.Error(err, "failed to update cm")
-			}
 			return reconcile.Result{}, err
 		} else {
-			if len(UCID) == 0 {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationSuccess, DevtronVersion: "v1"}
-			} else {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeSuccess, DevtronVersion: "v1"}
+			// when update success following events should send
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), DevtronVersion: "v1"}
+			if installEvent == 1 && objectEventType == SpecChanged {
+				payload.EventType = InstallationStart
+			} else if installEvent == 1 && objectEventType == Downloaded {
+				payload.EventType = InstallationInProgress
+			} else if installEvent == 1 && objectEventType == Applied {
+				payload.EventType = InstallationSuccess
+				installEvent = 2
+			} else if installEvent == 2 && objectEventType == SpecChanged {
+				payload.EventType = UpgradeStart
+			} else if installEvent == 2 && objectEventType == Downloaded {
+				payload.EventType = UpgradeInProgress
+			} else if installEvent == 2 && objectEventType == Applied {
+				payload.EventType = UpgradeSuccess
+			}
+			err = r.sendEvent(payload)
+			if err != nil {
+				r.Log.Error(err, "failed to send event to posthog")
+			}
+			if payload.EventType == InstallationSuccess {
+				err = r.updateStatusOnCm(cm)
+				if err != nil {
+					r.Log.Error(err, "failed to update cm")
+				}
 			}
 		}
-	}
-	err = r.sendEvent(payload)
-	if err != nil {
-		r.Log.Error(err, "failed to send event to posthog")
-	}
-	err = r.updateStatusOnCm(cm, payload.EventType)
-	if err != nil {
-		r.Log.Error(err, "failed to update cm")
 	}
 	return ctrl.Result{}, nil
 }
@@ -213,7 +228,7 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 	if r.PosthogClient != nil {
 		r.PosthogClient.Enqueue(posthog.Capture{
 			DistinctId: payload.UCID,
-			Event:      payload.EventType,
+			Event:      string(payload.EventType),
 			Properties: prop,
 		})
 	}
@@ -351,13 +366,13 @@ func (r *InstallerReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *InstallerReconciler) GetClientForInCluster() (*v12.CoreV1Client, error) {
 	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		r.Log.Error(err, " error on in cluster config")
 		return nil, err
 	}
 	// creates the clientset
-	clientset, err := v12.NewForConfig(config)
+	clientset, err := v12.NewForConfig(cfg)
 	if err != nil {
 		r.Log.Error(err, " error on in cluster config client")
 		return nil, err
@@ -395,14 +410,14 @@ func (r *InstallerReconciler) UpdateConfigMap(namespace string, cm *v1.ConfigMap
 	}
 }
 
-func (r *InstallerReconciler) updateStatusOnCm(cm *v1.ConfigMap, eventType string) error {
+func (r *InstallerReconciler) updateStatusOnCm(cm *v1.ConfigMap) error {
 	client, err := r.GetClientForInCluster()
 	if err != nil {
 		r.Log.Error(err, "exception while update updateStatusOnCm")
 		return err
 	}
 	dataMap := cm.Data
-	dataMap["status"] = eventType
+	dataMap[InstallEventKey] = "2"
 	cm.Data = dataMap
 	_, err = r.UpdateConfigMap(DevtronNamespace, cm, client)
 	if err != nil {
@@ -417,13 +432,13 @@ func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, er
 	ucid, found := r.Cache.Get(DevtronUniqueClientIdConfigMapKey)
 	//TODO: refactor the code to include only one if condition i.e; if !found {
 	if found && fromCache {
-		return ucid.(string), cm, nil
+		return ucid.(string), nil, nil
 	} else {
 		//TODO: use r.Client instead of creating new client
 		client, err := r.GetClientForInCluster()
 		if err != nil {
 			r.Log.Error(err, "exception while getting unique client id")
-			return ucid.(string), cm, nil
+			return "", nil, err
 		}
 		cm, err = r.GetConfigMap(DevtronNamespace, DevtronUniqueClientIdConfigMap, client)
 		if errStatus, ok := status.FromError(err); !ok || errStatus.Code() == codes.NotFound || errStatus.Code() == codes.Unknown {
@@ -432,11 +447,12 @@ func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, er
 			data := map[string]string{}
 			//TODO: we can rather use SHA1 to generate uniqueId, that has low chances of collision
 			data[DevtronUniqueClientIdConfigMapKey] = language.Generate(16) // generate unique random number
+			data[InstallEventKey] = "1"
 			cm.Data = data
 			_, err = r.CreateConfigMap(DevtronNamespace, cm, client)
 			if err != nil {
 				r.Log.Error(err, "exception while getting unique client id")
-				return ucid.(string), cm, nil
+				return "", nil, err
 			}
 		}
 		dataMap := cm.Data
@@ -445,7 +461,7 @@ func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, er
 		//TODO: should be cm != nil
 		if cm == nil {
 			r.Log.Error(err, "configmap not found while getting unique client id", "cm", cm)
-			return ucid.(string), cm, nil
+			return "", nil, nil
 		}
 	}
 	return ucid.(string), cm, nil
