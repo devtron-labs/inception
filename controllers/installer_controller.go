@@ -45,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -67,18 +68,19 @@ const DevtronNamespace = "devtroncd"
 type TelemetryEventType string
 
 const (
-	Heartbeat              TelemetryEventType = "Heartbeat"
-	InstallationStart      TelemetryEventType = "InstallationStart"
-	InstallationInProgress TelemetryEventType = "InstallationInProgress"
-	InstallationInterrupt  TelemetryEventType = "InstallationInterrupt"
-	InstallationSuccess    TelemetryEventType = "InstallationSuccess"
-	InstallationFailure    TelemetryEventType = "InstallationFailure"
-	UpgradeStart           TelemetryEventType = "UpgradeStart"
-	UpgradeInProgress      TelemetryEventType = "UpgradeInProgress"
-	UpgradeInterrupt       TelemetryEventType = "UpgradeInterrupt"
-	UpgradeSuccess         TelemetryEventType = "UpgradeSuccess"
-	UpgradeFailure         TelemetryEventType = "UpgradeFailure"
-	Summary                TelemetryEventType = "Summary"
+	Heartbeat                    TelemetryEventType = "Heartbeat"
+	InstallationStart            TelemetryEventType = "InstallationStart"
+	InstallationInProgress       TelemetryEventType = "InstallationInProgress"
+	InstallationInterrupt        TelemetryEventType = "InstallationInterrupt"
+	InstallationSuccess          TelemetryEventType = "InstallationSuccess"
+	InstallationFailure          TelemetryEventType = "InstallationFailure"
+	UpgradeStart                 TelemetryEventType = "UpgradeStart"
+	UpgradeInProgress            TelemetryEventType = "UpgradeInProgress"
+	UpgradeInterrupt             TelemetryEventType = "UpgradeInterrupt"
+	UpgradeSuccess               TelemetryEventType = "UpgradeSuccess"
+	UpgradeFailure               TelemetryEventType = "UpgradeFailure"
+	Summary                      TelemetryEventType = "Summary"
+	InstallationApplicationError TelemetryEventType = "InstallationApplicationError"
 )
 
 type TelemetryEventDto struct {
@@ -120,6 +122,11 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 
 	if len(installer.Spec.URL) == 0 {
 		return reconcile.Result{}, fmt.Errorf("url is not specified")
+	}
+	devtronVersion := strings.ReplaceAll(installer.Spec.URL, "https://raw.githubusercontent.com/devtron-labs/devtron/", "")
+	devtronVersion = strings.ReplaceAll(devtronVersion, "/manifests/installation-script", "")
+	if len(devtronVersion) > 8 {
+		devtronVersion = "v1"
 	}
 	updated := false
 
@@ -170,18 +177,22 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		err = r.Client.Update(context.Background(), installer)
 		if err != nil {
 			if installEvent == 1 {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInterrupt, DevtronVersion: "v1"}
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInterrupt, DevtronVersion: devtronVersion}
 			} else if installEvent == 2 {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInterrupt, DevtronVersion: "v1"}
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInterrupt, DevtronVersion: devtronVersion}
+			}
+			if installEvent == -1 {
+				payload.EventType = InstallationApplicationError
 			}
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
 			}
+
 			return reconcile.Result{}, err
 		} else {
 			// when update success following events should send
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), DevtronVersion: "v1"}
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), DevtronVersion: devtronVersion}
 			if installEvent == 1 && objectEventType == SpecChanged {
 				payload.EventType = InstallationStart
 			} else if installEvent == 1 && objectEventType == Downloaded {
@@ -195,6 +206,9 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				payload.EventType = UpgradeInProgress
 			} else if installEvent == 2 && objectEventType == Applied {
 				payload.EventType = UpgradeSuccess
+			}
+			if installEvent == -1 {
+				payload.EventType = InstallationApplicationError
 			}
 			err = r.sendEvent(payload)
 			if err != nil {
