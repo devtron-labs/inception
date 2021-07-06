@@ -68,19 +68,19 @@ const DevtronNamespace = "devtroncd"
 type TelemetryEventType string
 
 const (
-	Heartbeat                    TelemetryEventType = "Heartbeat"
-	InstallationStart            TelemetryEventType = "InstallationStart"
-	InstallationInProgress       TelemetryEventType = "InstallationInProgress"
-	InstallationInterrupt        TelemetryEventType = "InstallationInterrupt"
-	InstallationSuccess          TelemetryEventType = "InstallationSuccess"
-	InstallationFailure          TelemetryEventType = "InstallationFailure"
-	UpgradeStart                 TelemetryEventType = "UpgradeStart"
-	UpgradeInProgress            TelemetryEventType = "UpgradeInProgress"
-	UpgradeInterrupt             TelemetryEventType = "UpgradeInterrupt"
-	UpgradeSuccess               TelemetryEventType = "UpgradeSuccess"
-	UpgradeFailure               TelemetryEventType = "UpgradeFailure"
-	Summary                      TelemetryEventType = "Summary"
-	InstallationApplicationError TelemetryEventType = "InstallationApplicationError"
+	Heartbeat                            TelemetryEventType = "Heartbeat"
+	InstallationStart                    TelemetryEventType = "InstallationStart"
+	InstallationInProgress               TelemetryEventType = "InstallationInProgress"
+	InstallationInterrupt                TelemetryEventType = "InstallationInterrupt"
+	InstallationSuccess                  TelemetryEventType = "InstallationSuccess"
+	InstallationFailure                  TelemetryEventType = "InstallationFailure"
+	UpgradeStart                         TelemetryEventType = "UpgradeStart"
+	UpgradeInProgress                    TelemetryEventType = "UpgradeInProgress"
+	UpgradeInterrupt                     TelemetryEventType = "UpgradeInterrupt"
+	UpgradeSuccess                       TelemetryEventType = "UpgradeSuccess"
+	UpgradeFailure                       TelemetryEventType = "UpgradeFailure"
+	Summary                              TelemetryEventType = "Summary"
+	InstallationInternalApplicationError TelemetryEventType = "InstallationInternalApplicationError"
 )
 
 type TelemetryEventDto struct {
@@ -171,7 +171,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			installEvent, err = strconv.Atoi(installEventStr)
 			if err != nil {
 				installEvent = 1 // there might be no key in first time in cm get
-				r.Log.Error(err, "failed to fet install event status from cm")
+				r.Log.Error(err, "failed to fetch install event status from cm")
 			}
 		}
 		err = r.Client.Update(context.Background(), installer)
@@ -182,7 +182,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInterrupt, DevtronVersion: devtronVersion}
 			}
 			if installEvent == -1 {
-				payload.EventType = InstallationApplicationError
+				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError, DevtronVersion: devtronVersion}
 			}
 			err = r.sendEvent(payload)
 			if err != nil {
@@ -208,7 +208,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 				payload.EventType = UpgradeSuccess
 			}
 			if installEvent == -1 {
-				payload.EventType = InstallationApplicationError
+				payload.EventType = InstallationInternalApplicationError
 			}
 			err = r.sendEvent(payload)
 			if err != nil {
