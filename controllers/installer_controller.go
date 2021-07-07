@@ -45,7 +45,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -123,11 +122,6 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	if len(installer.Spec.URL) == 0 {
 		return reconcile.Result{}, fmt.Errorf("url is not specified")
 	}
-	devtronVersion := strings.ReplaceAll(installer.Spec.URL, "https://raw.githubusercontent.com/devtron-labs/devtron/", "")
-	devtronVersion = strings.ReplaceAll(devtronVersion, "/manifests/installation-script", "")
-	if len(devtronVersion) > 8 {
-		devtronVersion = "v1"
-	}
 	updated := false
 
 	if hasSpecChanged(installer) {
@@ -177,12 +171,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		err = r.Client.Update(context.Background(), installer)
 		if err != nil {
 			if installEvent == 1 {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInterrupt, DevtronVersion: devtronVersion}
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: InstallationInterrupt}
 			} else if installEvent == 2 {
-				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInterrupt, DevtronVersion: devtronVersion}
+				payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), EventType: UpgradeInterrupt}
 			}
 			if installEvent == -1 {
-				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError, DevtronVersion: devtronVersion}
+				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError}
 			}
 			err = r.sendEvent(payload)
 			if err != nil {
@@ -192,7 +186,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			return reconcile.Result{}, err
 		} else {
 			// when update success following events should send
-			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now(), DevtronVersion: devtronVersion}
+			payload = &TelemetryEventDto{UCID: UCID, Timestamp: time.Now()}
 			if installEvent == 1 && objectEventType == SpecChanged {
 				payload.EventType = InstallationStart
 			} else if installEvent == 1 && objectEventType == Downloaded {
