@@ -16,6 +16,11 @@ limitations under the License.
 
 package language
 
+import (
+	"math/rand"
+	"strings"
+)
+
 func StripQuotes(text string) string {
 	startIndex := 0
 	endIndex := len(text)
@@ -28,4 +33,15 @@ func StripQuotes(text string) string {
 		endIndex--
 	}
 	return text[startIndex:endIndex]
+}
+
+var chars = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
+
+func Generate(size int) string {
+	var b strings.Builder
+	for i := 0; i < size; i++ {
+		b.WriteRune(chars[rand.Intn(len(chars))])
+	}
+	str := b.String()
+	return str
 }
