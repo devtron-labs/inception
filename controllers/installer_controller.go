@@ -446,16 +446,22 @@ func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, er
 	var cm *v1.ConfigMap
 	ucid, found := r.Cache.Get(DevtronUniqueClientIdConfigMapKey)
 	//TODO: refactor the code to include only one if condition i.e; if !found {
+	r.Log.Info("reconcile called ...getUCID", "ucid", ucid,"found",found)
 	if found && fromCache {
 		return ucid.(string), nil, nil
 	} else {
+		r.Log.Info("reconcile called ...getUCID", "ucid", ucid,"found",found)
 		//TODO: use r.Client instead of creating new client
 		client, err := r.GetClientForInCluster()
 		if err != nil {
 			r.Log.Error(err, "exception while getting unique client id")
 			return "", nil, err
 		}
+		r.Log.Info("reconcile called ...getUCID", "client", client)
+
 		cm, err = r.GetConfigMap(DevtronNamespace, DevtronUniqueClientIdConfigMap, client)
+		r.Log.Info("reconcile called ...getUCID", "cm", cm, "err", err)
+
 		if errStatus, ok := status.FromError(err); !ok || errStatus.Code() == codes.NotFound || errStatus.Code() == codes.Unknown {
 			// if not found, create new cm
 			cm = &v1.ConfigMap{ObjectMeta: metav1.ObjectMeta{Name: DevtronUniqueClientIdConfigMap}}
