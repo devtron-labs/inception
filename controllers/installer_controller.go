@@ -208,7 +208,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
 			}
-			if payload.EventType == InstallationSuccess {
+			if payload.EventType == InstallationSuccess && cm != nil {
 				err = r.updateStatusOnCm(cm)
 				if err != nil {
 					r.Log.Error(err, "failed to update cm")
@@ -423,13 +423,15 @@ func (r *InstallerReconciler) updateStatusOnCm(cm *v1.ConfigMap) error {
 		r.Log.Error(err, "exception while update updateStatusOnCm")
 		return err
 	}
-	dataMap := cm.Data
-	dataMap[InstallEventKey] = "2"
-	cm.Data = dataMap
-	_, err = r.UpdateConfigMap(DevtronNamespace, cm, client)
-	if err != nil {
-		r.Log.Error(err, "exception while update updateStatusOnCm")
-		return err
+	if cm != nil && cm.Data != nil {
+		dataMap := cm.Data
+		dataMap[InstallEventKey] = "2"
+		cm.Data = dataMap
+		_, err = r.UpdateConfigMap(DevtronNamespace, cm, client)
+		if err != nil {
+			r.Log.Error(err, "exception while update updateStatusOnCm")
+			return err
+		}
 	}
 	return nil
 }
@@ -456,20 +458,19 @@ func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, er
 			data[DevtronUniqueClientIdConfigMapKey] = language.Generate(16) // generate unique random number
 			data[InstallEventKey] = "1"
 			cm.Data = data
-			_, err = r.CreateConfigMap(DevtronNamespace, cm, client)
+			cm, err = r.CreateConfigMap(DevtronNamespace, cm, client)
 			if err != nil {
 				r.Log.Error(err, "exception while getting unique client id")
 				return "", nil, err
 			}
 		}
-		dataMap := cm.Data
-		ucid = dataMap[DevtronUniqueClientIdConfigMapKey]
-		r.Cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
-		//TODO: should be cm != nil
 		if cm == nil {
 			r.Log.Error(err, "configmap not found while getting unique client id", "cm", cm)
 			return "", nil, nil
 		}
+		dataMap := cm.Data
+		ucid = dataMap[DevtronUniqueClientIdConfigMapKey]
+		r.Cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
 	}
 	return ucid.(string), cm, nil
 }
