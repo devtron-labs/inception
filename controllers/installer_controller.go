@@ -123,7 +123,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return reconcile.Result{}, fmt.Errorf("url is not specified")
 	}
 	updated := false
-
+	r.Log.Info("reconcile called ...1")
 	if hasSpecChanged(installer) {
 		fmt.Println("url changed")
 		installer.Status.Sync.Status = installerv1alpha1.SyncStatusCodeOutOfSync
@@ -148,6 +148,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	}
 
 	//TODO - setup correct event trigger points
+	r.Log.Info("reconcile called ...2", "updated", updated)
 	if updated {
 		fmt.Println("updating")
 		var payload *TelemetryEventDto
@@ -159,6 +160,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err != nil {
 			r.Log.Error(err, "failed to get ucid from config map")
 		}
+		r.Log.Info("reconcile called ...3", "UCID", UCID)
 		if cm != nil && cm.Data != nil && installEvent == -1 {
 			dataMap := cm.Data
 			installEventStr := dataMap["installEvent"]
@@ -182,7 +184,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
 			}
-
+			r.Log.Info("reconcile called ...4", "payload", payload)
 			return reconcile.Result{}, err
 		} else {
 			// when update success following events should send
@@ -208,6 +210,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
 			}
+			r.Log.Info("reconcile called ...5", "payload", payload)
 			if payload.EventType == InstallationSuccess {
 				err = r.updateStatusOnCm(cm)
 				if err != nil {
