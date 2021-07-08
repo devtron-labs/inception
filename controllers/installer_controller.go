@@ -107,6 +107,7 @@ const (
 func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
 	_ = r.Log.WithValues("installer", req.NamespacedName)
+	r.Log.Info("reconcile called ...0")
 
 	installer := &installerv1alpha1.Installer{}
 	err := r.Client.Get(context.Background(), req.NamespacedName, installer)
@@ -160,7 +161,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		if err != nil {
 			r.Log.Error(err, "failed to get ucid from config map")
 		}
-		r.Log.Info("reconcile called ...3", "UCID", UCID)
+		r.Log.Info("reconcile called ...3", "UCID", UCID, "cm", cm)
 		if cm != nil && cm.Data != nil && installEvent == -1 {
 			dataMap := cm.Data
 			installEventStr := dataMap["installEvent"]
@@ -180,11 +181,11 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError}
 			}
+			r.Log.Info("reconcile called ...4", "payload", payload)
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
 			}
-			r.Log.Info("reconcile called ...4", "payload", payload)
 			return reconcile.Result{}, err
 		} else {
 			// when update success following events should send
@@ -206,13 +207,15 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload.EventType = InstallationInternalApplicationError
 			}
+			r.Log.Info("reconcile called ...5", "payload", payload)
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
 			}
-			r.Log.Info("reconcile called ...5", "payload", payload)
 			if payload.EventType == InstallationSuccess {
+				r.Log.Info("reconcile called ...6", "payload", payload)
 				err = r.updateStatusOnCm(cm)
+				r.Log.Info("reconcile called ...6", "err", err)
 				if err != nil {
 					r.Log.Error(err, "failed to update cm")
 				}
@@ -223,6 +226,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
+	r.Log.Info("reconcile called ...sendEvent", "payload", payload)
 	prop := make(map[string]interface{})
 	//payload := &TelemetryEventDto{UCID: "ucid", Timestamp: time.Now(), EventType: Summary, DevtronVersion: "v1"}
 	reqBody, err := json.Marshal(payload)
@@ -242,6 +246,7 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 			Properties: prop,
 		})
 	}
+	r.Log.Info("reconcile called ...sendEvent", "prop", prop)
 	return nil
 }
 
