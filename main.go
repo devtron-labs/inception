@@ -33,7 +33,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"time"
 
-	"github.com/caarlos0/env"
 	installerv1alpha1 "github.com/devtron-labs/inception/api/v1alpha1"
 	"github.com/devtron-labs/inception/controllers"
 	// +kubebuilder:scaffold:imports
@@ -52,12 +51,12 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-type PosthogConfig struct {
-	PosthogApiKey           string `env:"POSTHOG_API_KEY" envDefault:""`
-	PosthogEndpoint         string `env:"POSTHOG_ENDPOINT" envDefault:"https://app.posthog.com"`
-	CacheExpiry             int    `env:"CACHE_EXPIRY" envDefault:"120"`
-	TelemetryApiKeyEndpoint string `env:"TELEMETRY_API_KEY_ENDPOINT" envDefault:"aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9hcGlrZXk="`
-}
+var (
+	PosthogApiKey           string = ""
+	PosthogEndpoint         string = "https://app.posthog.com"
+	CacheExpiry             int    = 720
+	TelemetryApiKeyEndpoint string = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9hcGlrZXk="
+)
 
 func main() {
 	var metricsAddr string
@@ -82,24 +81,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	cfg := &PosthogConfig{}
-	err = env.Parse(cfg)
-	if err != nil {
-		setupLog.Error(err, "exception caught while parsing posthog config")
-		os.Exit(1)
-	}
-
-	if len(cfg.PosthogApiKey) == 0 {
-		_, apiKey, err := getPosthogApiKey(cfg.TelemetryApiKeyEndpoint)
+	if len(PosthogApiKey) == 0 {
+		_, apiKey, err := getPosthogApiKey(TelemetryApiKeyEndpoint)
 		if err != nil {
 			setupLog.Error(err, "exception caught while getting api key")
 		}
-		cfg.PosthogApiKey = apiKey
+		PosthogApiKey = apiKey
 	}
-	client, _ := posthog.NewWithConfig(cfg.PosthogApiKey, posthog.Config{Endpoint: cfg.PosthogEndpoint})
+	client, _ := posthog.NewWithConfig(PosthogApiKey, posthog.Config{Endpoint: PosthogEndpoint})
 	//defer client.Close()
-	d := time.Duration(cfg.CacheExpiry)
-	c := cache.New(d*time.Minute, 240*time.Minute)
+	d := time.Duration(CacheExpiry)
+	c := cache.New(d*time.Minute, 1440*time.Minute)
 
 	if err = (&controllers.InstallerReconciler{
 		Client:        mgr.GetClient(),
