@@ -19,6 +19,7 @@ package language
 import (
 	"math/rand"
 	"strings"
+	"time"
 )
 
 func StripQuotes(text string) string {
@@ -38,6 +39,7 @@ func StripQuotes(text string) string {
 var chars = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 
 func Generate(size int) string {
+	rand.Seed(time.Now().UnixNano())
 	var b strings.Builder
 	for i := 0; i < size; i++ {
 		b.WriteRune(chars[rand.Intn(len(chars))])
