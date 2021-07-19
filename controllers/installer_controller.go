@@ -99,9 +99,9 @@ var objectEventType ObjectEventType
 
 type ObjectEventType string
 
-var isWhitelisted = false
+var IsOptOut = false
 
-const WhitelistApiBaseUrl = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS93aGl0ZWxpc3QvY2hlY2s="
+const TelemetryOptOutApiBaseUrl = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9vcHQtb3V0"
 const (
 	SpecChanged ObjectEventType = "SpecChanged"
 	Downloaded  ObjectEventType = "Downloaded"
@@ -224,8 +224,8 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
-	if isWhitelisted {
-		r.Log.Info("telemetry is off as client whitelisted ....")
+	if IsOptOut {
+		r.Log.Info("telemetry is opt-out for this client ....")
 		return nil
 	}
 	prop := make(map[string]interface{})
@@ -479,53 +479,52 @@ func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, er
 		ucid = dataMap[DevtronUniqueClientIdConfigMapKey]
 		r.Cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
 
-		// TODO - check ucid whitelisted or not
-		flag, err := r.checkWhitelist(ucid.(string))
+		flag, err := r.checkForOptOut(ucid.(string))
 		if err != nil {
-			r.Log.Error(err, "error sending event to posthog, failed check for whitelist")
+			r.Log.Error(err, "error sending event to posthog, failed check for opt-out")
 			return "", nil, nil
 		}
-		isWhitelisted = flag
+		IsOptOut = flag
 	}
 	return ucid.(string), cm, nil
 }
 
-func (r *InstallerReconciler) checkWhitelist(UCID string) (bool, error) {
-	decodedUrl, err := base64.StdEncoding.DecodeString(WhitelistApiBaseUrl)
+func (r *InstallerReconciler) checkForOptOut(UCID string) (bool, error) {
+	decodedUrl, err := base64.StdEncoding.DecodeString(TelemetryOptOutApiBaseUrl)
 	if err != nil {
-		r.Log.Error(err, "check white list failed, decode error")
+		r.Log.Error(err, "check opt-out list failed, decode error")
 		return false, err
 	}
 	encodedUrl := string(decodedUrl)
 	url := fmt.Sprintf("%s/%s", encodedUrl, UCID)
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		r.Log.Error(err, "check white list failed, rest api error")
+		r.Log.Error(err, "check opt-out list failed, rest api error")
 		return false, err
 	}
 	//var client *http.Client
 	client := &http.Client{}
 	res, err := client.Do(req)
 	if err != nil {
-		r.Log.Error(err, "check white list failed, rest api error")
+		r.Log.Error(err, "check opt-out list failed, rest api error")
 		return false, err
 	}
 	if res.StatusCode >= 200 && res.StatusCode <= 299 {
 		resBody, err := ioutil.ReadAll(res.Body)
 		if err != nil {
-			r.Log.Error(err, "check white list failed, rest api error")
+			r.Log.Error(err, "check opt-out list failed, rest api error")
 			return false, err
 		}
 		var apiRes map[string]interface{}
 		err = json.Unmarshal(resBody, &apiRes)
 		if err != nil {
-			r.Log.Error(err, "check white list failed, rest api error")
+			r.Log.Error(err, "check opt-out list failed, rest api error")
 			return false, err
 		}
 		flag := apiRes["result"].(bool)
 		return flag, nil
 	} else {
-		r.Log.Error(err, "check white list, rest api error")
+		r.Log.Error(err, "check opt-out list, rest api error")
 	}
 	return false, err
 }
