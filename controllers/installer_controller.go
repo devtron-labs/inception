@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"crypto/sha1"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -54,9 +55,11 @@ type InstallerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 	//Instead of KLangListener
-	Mapper        *language.Mapper
-	PosthogClient posthog.Client
-	Cache         *cache.Cache
+	Mapper          *language.Mapper
+	PosthogClient   posthog.Client
+	Cache           *cache.Cache
+	PosthogApiKey   string
+	PosthogEndpoint string
 }
 
 const DevtronUniqueClientIdConfigMap = "devtron-ucid"
@@ -98,6 +101,9 @@ var objectEventType ObjectEventType
 
 type ObjectEventType string
 
+var IsOptOut = false
+
+const TelemetryOptOutApiBaseUrl = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9vcHQtb3V0"
 const (
 	SpecChanged ObjectEventType = "SpecChanged"
 	Downloaded  ObjectEventType = "Downloaded"
@@ -220,8 +226,11 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 }
 
 func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
+	if IsOptOut {
+		r.Log.Info("telemetry is opt-out for this client ....")
+		return nil
+	}
 	prop := make(map[string]interface{})
-	//payload := &TelemetryEventDto{UCID: "ucid", Timestamp: time.Now(), EventType: Summary, DevtronVersion: "v1"}
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
 		r.Log.Error(err, "telemetry event to posthog from operator, payload marshal error")
@@ -231,6 +240,14 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 	if err != nil {
 		r.Log.Error(err, "telemetry event to posthog from operator, payload unmarshal error")
 		return nil
+	}
+
+	if r.PosthogClient == nil {
+		r.Log.Error(err, "no posthog client found, creating new")
+		client, err := r.retryPosthogClient(r.PosthogApiKey, r.PosthogEndpoint)
+		if err == nil {
+			r.PosthogClient = client
+		}
 	}
 	if r.PosthogClient != nil {
 		r.PosthogClient.Enqueue(posthog.Capture{
@@ -471,6 +488,40 @@ func (r *InstallerReconciler) getUCID(fromCache bool) (string, *v1.ConfigMap, er
 		dataMap := cm.Data
 		ucid = dataMap[DevtronUniqueClientIdConfigMapKey]
 		r.Cache.Set(DevtronUniqueClientIdConfigMapKey, ucid, cache.DefaultExpiration)
+
+		flag, err := r.checkForOptOut(ucid.(string))
+		if err != nil {
+			r.Log.Error(err, "error sending event to posthog, failed check for opt-out")
+			return "", nil, nil
+		}
+		IsOptOut = flag
 	}
 	return ucid.(string), cm, nil
+}
+
+func (r *InstallerReconciler) checkForOptOut(UCID string) (bool, error) {
+	decodedUrl, err := base64.StdEncoding.DecodeString(TelemetryOptOutApiBaseUrl)
+	if err != nil {
+		r.Log.Error(err, "check opt-out list failed, decode error")
+		return false, err
+	}
+	encodedUrl := string(decodedUrl)
+	url := fmt.Sprintf("%s/%s", encodedUrl, UCID)
+
+	response, err := language.HttpRequest(url)
+	if err != nil {
+		r.Log.Error(err, "check opt-out list failed, rest api error")
+		return false, err
+	}
+	flag := response["result"].(bool)
+	return flag, err
+}
+
+func (r *InstallerReconciler) retryPosthogClient(PosthogApiKey string, PosthogEndpoint string) (posthog.Client, error) {
+	client, err := posthog.NewWithConfig(PosthogApiKey, posthog.Config{Endpoint: PosthogEndpoint})
+	//defer client.Close()
+	if err != nil {
+		r.Log.Error(err, "exception caught while creating posthog client")
+	}
+	return client, err
 }

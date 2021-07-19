@@ -17,8 +17,12 @@ limitations under the License.
 package language
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"strings"
+	"time"
 )
 
 func StripQuotes(text string) string {
@@ -38,10 +42,37 @@ func StripQuotes(text string) string {
 var chars = []rune("abcdefghijklmnopqrstuvwxyz0123456789")
 
 func Generate(size int) string {
+	rand.Seed(time.Now().UnixNano())
 	var b strings.Builder
 	for i := 0; i < size; i++ {
 		b.WriteRune(chars[rand.Intn(len(chars))])
 	}
 	str := b.String()
 	return str
+}
+
+func HttpRequest(url string) (map[string]interface{}, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	//var client *http.Client
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode >= 200 && res.StatusCode <= 299 {
+		resBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		var apiRes map[string]interface{}
+		err = json.Unmarshal(resBody, &apiRes)
+		if err != nil {
+			return nil, err
+		}
+		return apiRes, err
+	}
+	return nil, err
 }
