@@ -18,16 +18,14 @@ package main
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/devtron-labs/inception/pkg/language"
 	"github.com/posthog/posthog-go"
-	"io/ioutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"net/http"
 	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -54,7 +52,7 @@ func init() {
 var (
 	PosthogApiKey           string = ""
 	PosthogEndpoint         string = "https://app.posthog.com"
-	CacheExpiry             int    = 720
+	CacheExpiry             int    = 1440
 	TelemetryApiKeyEndpoint string = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9hcGlrZXk="
 )
 
@@ -88,18 +86,23 @@ func main() {
 		}
 		PosthogApiKey = apiKey
 	}
-	client, _ := posthog.NewWithConfig(PosthogApiKey, posthog.Config{Endpoint: PosthogEndpoint})
+	client, err := posthog.NewWithConfig(PosthogApiKey, posthog.Config{Endpoint: PosthogEndpoint})
 	//defer client.Close()
+	if err != nil {
+		setupLog.Error(err, "exception caught while creating posthog client")
+	}
 	d := time.Duration(CacheExpiry)
-	c := cache.New(d*time.Minute, 1440*time.Minute)
+	c := cache.New(d*time.Minute, d*time.Minute)
 
 	if err = (&controllers.InstallerReconciler{
-		Client:        mgr.GetClient(),
-		Log:           ctrl.Log.WithName("controllers").WithName("Installer"),
-		Scheme:        mgr.GetScheme(),
-		Mapper:        language.NewMapperFactory(),
-		PosthogClient: client,
-		Cache:         c,
+		Client:          mgr.GetClient(),
+		Log:             ctrl.Log.WithName("controllers").WithName("Installer"),
+		Scheme:          mgr.GetScheme(),
+		Mapper:          language.NewMapperFactory(),
+		PosthogClient:   client,
+		Cache:           c,
+		PosthogApiKey:   PosthogApiKey,
+		PosthogEndpoint: PosthogEndpoint,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Installer")
 		os.Exit(1)
@@ -114,37 +117,21 @@ func main() {
 }
 
 func getPosthogApiKey(encodedPosthogApiKeyUrl string) (string, string, error) {
-	dncodedPosthogApiKeyUrl, err := base64.StdEncoding.DecodeString(encodedPosthogApiKeyUrl)
+	decodedPosthogApiKeyUrl, err := base64.StdEncoding.DecodeString(encodedPosthogApiKeyUrl)
+	if err != nil {
+		fmt.Println("error fetching posthog api key, decode error")
+		return "", "", err
+	}
+	apiKeyUrl := string(decodedPosthogApiKeyUrl)
+	response, err := language.HttpRequest(apiKeyUrl)
+	if err != nil {
+		fmt.Println("error fetching posthog api key, http call")
+		return "", "", err
+	}
+	encodedApiKey := response["result"].(string)
+	apiKey, err := base64.StdEncoding.DecodeString(encodedApiKey)
 	if err != nil {
 		return "", "", err
 	}
-	apiKeyUrl := string(dncodedPosthogApiKeyUrl)
-	req, err := http.NewRequest(http.MethodGet, apiKeyUrl, nil)
-	if err != nil {
-		return "", "", err
-	}
-	//var client *http.Client
-	client := &http.Client{}
-	res, err := client.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	if res.StatusCode >= 200 && res.StatusCode <= 299 {
-		resBody, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return "", "", err
-		}
-		var apiRes map[string]interface{}
-		err = json.Unmarshal(resBody, &apiRes)
-		if err != nil {
-			return "", "", err
-		}
-		encodedApiKey := apiRes["result"].(string)
-		apiKey, err := base64.StdEncoding.DecodeString(encodedApiKey)
-		if err != nil {
-			return "", "", err
-		}
-		return encodedApiKey, string(apiKey), err
-	}
-	return "", "", err
+	return encodedApiKey, string(apiKey), err
 }

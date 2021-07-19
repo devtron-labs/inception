@@ -17,7 +17,10 @@ limitations under the License.
 package language
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"math/rand"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -46,4 +49,30 @@ func Generate(size int) string {
 	}
 	str := b.String()
 	return str
+}
+
+func HttpRequest(url string) (map[string]interface{}, error) {
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	//var client *http.Client
+	client := &http.Client{}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if res.StatusCode >= 200 && res.StatusCode <= 299 {
+		resBody, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return nil, err
+		}
+		var apiRes map[string]interface{}
+		err = json.Unmarshal(resBody, &apiRes)
+		if err != nil {
+			return nil, err
+		}
+		return apiRes, err
+	}
+	return nil, err
 }

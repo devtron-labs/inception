@@ -55,9 +55,11 @@ type InstallerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 	//Instead of KLangListener
-	Mapper        *language.Mapper
-	PosthogClient posthog.Client
-	Cache         *cache.Cache
+	Mapper          *language.Mapper
+	PosthogClient   posthog.Client
+	Cache           *cache.Cache
+	PosthogApiKey   string
+	PosthogEndpoint string
 }
 
 const DevtronUniqueClientIdConfigMap = "devtron-ucid"
@@ -238,6 +240,14 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 	if err != nil {
 		r.Log.Error(err, "telemetry event to posthog from operator, payload unmarshal error")
 		return nil
+	}
+
+	if r.PosthogClient == nil {
+		r.Log.Error(err, "no posthog client found, creating new")
+		client, err := r.retryPosthogClient(r.PosthogApiKey, r.PosthogEndpoint)
+		if err == nil {
+			r.PosthogClient = client
+		}
 	}
 	if r.PosthogClient != nil {
 		r.PosthogClient.Enqueue(posthog.Capture{
@@ -497,34 +507,21 @@ func (r *InstallerReconciler) checkForOptOut(UCID string) (bool, error) {
 	}
 	encodedUrl := string(decodedUrl)
 	url := fmt.Sprintf("%s/%s", encodedUrl, UCID)
-	req, err := http.NewRequest(http.MethodGet, url, nil)
+
+	response, err := language.HttpRequest(url)
 	if err != nil {
 		r.Log.Error(err, "check opt-out list failed, rest api error")
 		return false, err
 	}
-	//var client *http.Client
-	client := &http.Client{}
-	res, err := client.Do(req)
+	flag := response["result"].(bool)
+	return flag, err
+}
+
+func (r *InstallerReconciler) retryPosthogClient(PosthogApiKey string, PosthogEndpoint string) (posthog.Client, error) {
+	client, err := posthog.NewWithConfig(PosthogApiKey, posthog.Config{Endpoint: PosthogEndpoint})
+	//defer client.Close()
 	if err != nil {
-		r.Log.Error(err, "check opt-out list failed, rest api error")
-		return false, err
+		r.Log.Error(err, "exception caught while creating posthog client")
 	}
-	if res.StatusCode >= 200 && res.StatusCode <= 299 {
-		resBody, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			r.Log.Error(err, "check opt-out list failed, rest api error")
-			return false, err
-		}
-		var apiRes map[string]interface{}
-		err = json.Unmarshal(resBody, &apiRes)
-		if err != nil {
-			r.Log.Error(err, "check opt-out list failed, rest api error")
-			return false, err
-		}
-		flag := apiRes["result"].(bool)
-		return flag, nil
-	} else {
-		r.Log.Error(err, "check opt-out list, rest api error")
-	}
-	return false, err
+	return client, err
 }
