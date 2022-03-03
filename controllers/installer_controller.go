@@ -28,8 +28,6 @@ import (
 	"github.com/devtron-labs/inception/pkg/language"
 	parser2 "github.com/devtron-labs/inception/pkg/language/parser"
 	"github.com/go-logr/logr"
-	"github.com/patrickmn/go-cache"
-	"github.com/posthog/posthog-go"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"io"
@@ -66,6 +64,7 @@ const DevtronUniqueClientIdConfigMap = "devtron-ucid"
 const DevtronUniqueClientIdConfigMapKey = "UCID"
 const InstallEventKey = "installEvent"
 const DevtronNamespace = "devtroncd"
+const DevtronFullMode = "FULL"
 
 type TelemetryEventType string
 
@@ -92,6 +91,7 @@ type TelemetryEventDto struct {
 	EventType      TelemetryEventType `json:"eventType"`
 	ServerVersion  string             `json:"serverVersion,omitempty"`
 	DevtronVersion string             `json:"devtronVersion,omitempty"`
+	DevtronMode    string             `json:"devtronMode,omitempty"`
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
@@ -230,6 +230,7 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 		r.Log.Info("telemetry is opt-out for this client ....")
 		return nil
 	}
+	payload.DevtronMode = DevtronFullMode
 	prop := make(map[string]interface{})
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
