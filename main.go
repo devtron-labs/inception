@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/devtron-labs/inception/pkg/language"
@@ -53,7 +54,7 @@ var (
 	PosthogApiKey           string = ""
 	PosthogEndpoint         string = "https://app.posthog.com"
 	CacheExpiry             int    = 1440
-	TelemetryApiKeyEndpoint string = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9hcGlrZXk="
+	TelemetryApiKeyEndpoint string = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9wb3N0aG9nSW5mbw=="
 )
 
 func main() {
@@ -80,11 +81,13 @@ func main() {
 	}
 
 	if len(PosthogApiKey) == 0 {
-		_, apiKey, err := getPosthogApiKey(TelemetryApiKeyEndpoint)
+		_, apiKey, posthogUrl, err := getPosthogApiKey(TelemetryApiKeyEndpoint)
 		if err != nil {
 			setupLog.Error(err, "exception caught while getting api key")
+		} else {
+			PosthogApiKey = apiKey
+			PosthogEndpoint = posthogUrl
 		}
-		PosthogApiKey = apiKey
 	}
 	client, err := posthog.NewWithConfig(PosthogApiKey, posthog.Config{Endpoint: PosthogEndpoint})
 	//defer client.Close()
@@ -116,22 +119,35 @@ func main() {
 	}
 }
 
-func getPosthogApiKey(encodedPosthogApiKeyUrl string) (string, string, error) {
+func getPosthogApiKey(encodedPosthogApiKeyUrl string) (string, string, string, error) {
 	decodedPosthogApiKeyUrl, err := base64.StdEncoding.DecodeString(encodedPosthogApiKeyUrl)
 	if err != nil {
 		fmt.Println("error fetching posthog api key, decode error")
-		return "", "", err
+		return "", "", "", err
 	}
 	apiKeyUrl := string(decodedPosthogApiKeyUrl)
 	response, err := language.HttpRequest(apiKeyUrl)
 	if err != nil {
 		fmt.Println("error fetching posthog api key, http call")
-		return "", "", err
+		return "", "", "", err
 	}
-	encodedApiKey := response["result"].(string)
+
+	posthogInfo := response["result"]
+	posthogInfoByte, err := json.Marshal(posthogInfo)
+	if err != nil {
+		setupLog.Error(err, "error in fetched posthog info, http call")
+		return "", "", "", err
+	}
+	var datamap map[string]string
+	if err := json.Unmarshal(posthogInfoByte, &datamap); err != nil {
+		setupLog.Error(err, "error while unmarshal data")
+		return "", "", "", err
+	}
+	encodedApiKey := datamap["PosthogApiKey"]
+	posthogUrl := datamap["PosthogEndpoint"]
 	apiKey, err := base64.StdEncoding.DecodeString(encodedApiKey)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	return encodedApiKey, string(apiKey), err
+	return encodedApiKey, string(apiKey), posthogUrl, err
 }
