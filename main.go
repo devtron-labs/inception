@@ -57,6 +57,11 @@ var (
 	TelemetryApiKeyEndpoint string = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5pbmZvL2RldnRyb24vdGVsZW1ldHJ5L3Bvc3Rob2dJbmZv"
 )
 
+const (
+	ResponseApiKey string = "PosthogApiKey"
+	ResponseUrlKey string = "PosthogEndpoint"
+)
+
 func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
@@ -143,8 +148,8 @@ func getPosthogApiKey(encodedPosthogApiKeyUrl string) (string, string, string, e
 		setupLog.Error(err, "error while unmarshal data")
 		return "", "", "", err
 	}
-	encodedApiKey := datamap["PosthogApiKey"]
-	posthogUrl := datamap["PosthogEndpoint"]
+	encodedApiKey := datamap[ResponseApiKey]
+	posthogUrl := datamap[ResponseUrlKey]
 	apiKey, err := base64.StdEncoding.DecodeString(encodedApiKey)
 	if err != nil {
 		return "", "", "", err
