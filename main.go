@@ -54,7 +54,7 @@ var (
 	PosthogApiKey           string = ""
 	PosthogEndpoint         string = "https://app.posthog.com"
 	CacheExpiry             int    = 1440
-	TelemetryApiKeyEndpoint string = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5pbmZvL2RldnRyb24vdGVsZW1ldHJ5L3Bvc3Rob2dJbmZv"
+	TelemetryApiKeyEndpoint string = "aHR0cHM6Ly90ZWxlbWV0cnkuZGV2dHJvbi5haS9kZXZ0cm9uL3RlbGVtZXRyeS9wb3N0aG9nSW5mbw=="
 )
 
 const (
@@ -87,7 +87,6 @@ func main() {
 
 	if len(PosthogApiKey) == 0 {
 		_, apiKey, posthogUrl, err := getPosthogApiKey(TelemetryApiKeyEndpoint)
-		setupLog.Info(apiKey, posthogUrl, "PostInfo fetched from telemetry service")
 		if err != nil {
 			setupLog.Error(err, "exception caught while getting api key")
 		} else {
