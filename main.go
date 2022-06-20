@@ -87,6 +87,7 @@ func main() {
 
 	if len(PosthogApiKey) == 0 {
 		_, apiKey, posthogUrl, err := getPosthogApiKey(TelemetryApiKeyEndpoint)
+		setupLog.Info(apiKey, posthogUrl, "PostInfo fetched from telemetry service")
 		if err != nil {
 			setupLog.Error(err, "exception caught while getting api key")
 		} else {
