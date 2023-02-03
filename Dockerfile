@@ -24,6 +24,9 @@ FROM ubuntu:16.04
 RUN apt-get update -y && apt-get install ca-certificates -y && apt-get install curl -y
 WORKDIR /
 COPY --from=builder /workspace/manager .
-#USER nonroot:nonroot
+
+RUN useradd -ms /bin/bash devtron
+RUN chown -R devtron:devtron ./manager
+USER devtron
 
 ENTRYPOINT ["/manager"]
