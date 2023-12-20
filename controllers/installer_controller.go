@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"github.com/antlr/antlr4/runtime/Go/antlr"
 	installerv1alpha1 "github.com/devtron-labs/inception/api/v1alpha1"
+	providerIdentifier "github.com/devtron-labs/inception/cloud-provider-identifier"
 	"github.com/devtron-labs/inception/pkg/language"
 	parser2 "github.com/devtron-labs/inception/pkg/language/parser"
 	"github.com/go-logr/logr"
@@ -55,11 +56,12 @@ type InstallerReconciler struct {
 	Log    logr.Logger
 	Scheme *runtime.Scheme
 	//Instead of KLangListener
-	Mapper          *language.Mapper
-	PosthogClient   posthog.Client
-	Cache           *cache.Cache
-	PosthogApiKey   string
-	PosthogEndpoint string
+	Mapper                  *language.Mapper
+	PosthogClient           posthog.Client
+	Cache                   *cache.Cache
+	PosthogApiKey           string
+	PosthogEndpoint         string
+	cloudProviderIdentifier providerIdentifier.ProviderIdentifierService
 }
 
 const DevtronUniqueClientIdConfigMap = "devtron-ucid"
@@ -94,6 +96,7 @@ type TelemetryEventDto struct {
 	ServerVersion  string             `json:"serverVersion,omitempty"`
 	DevtronVersion string             `json:"devtronVersion,omitempty"`
 	DevtronMode    string             `json:"devtronMode,omitempty"`
+	CloudProvider  string             `json:"cloudProvider,omitempty"`
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
@@ -155,6 +158,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		objectEventType = Applied
 	}
 
+	provider, err := r.cloudProviderIdentifier.IdentifyProvider()
+	if err != nil {
+		r.Log.Error(err, "exception while getting cluster provider", "error", err)
+		return reconcile.Result{}, err
+	}
+
 	//TODO - setup correct event trigger points
 	if updated {
 		fmt.Println("updating")
@@ -186,6 +195,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError}
 			}
+			payload.CloudProvider = provider
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
@@ -212,6 +222,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload.EventType = InstallationInternalApplicationError
 			}
+			payload.CloudProvider = provider
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
