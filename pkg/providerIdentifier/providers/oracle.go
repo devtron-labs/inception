@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"github.com/devtron-labs/inception/pkg/providerIdentifier/bean"
 	"github.com/go-logr/logr"
-	"io"
+	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -19,7 +18,7 @@ type IdentifyOracle struct {
 }
 
 func (impl *IdentifyOracle) Identify() (string, error) {
-	data, err := os.ReadFile(bean.OracleSysFile)
+	data, err := ioutil.ReadFile(bean.OracleSysFile)
 	if err != nil {
 		impl.Log.Error(err, "error while reading file", "error", err)
 		return bean.Unknown, err
@@ -46,7 +45,7 @@ func (impl *IdentifyOracle) IdentifyViaMetadataServer(detected chan<- string) {
 	}
 	if resp.StatusCode == http.StatusOK {
 		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			impl.Log.Error(err, "error while reading response body", "error", err, "respBody", resp.Body)
 			detected <- bean.Unknown

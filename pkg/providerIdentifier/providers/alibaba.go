@@ -3,9 +3,8 @@ package providers
 import (
 	"github.com/devtron-labs/inception/pkg/providerIdentifier/bean"
 	"github.com/go-logr/logr"
-	"io"
+	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -14,7 +13,7 @@ type IdentifyAlibaba struct {
 }
 
 func (impl *IdentifyAlibaba) Identify() (string, error) {
-	data, err := os.ReadFile(bean.AlibabaSysFile)
+	data, err := ioutil.ReadFile(bean.AlibabaSysFile)
 	if err != nil {
 		impl.Log.Error(err, "error while reading file", "error", err)
 		return bean.Unknown, err
@@ -40,7 +39,7 @@ func (impl *IdentifyAlibaba) IdentifyViaMetadataServer(detected chan<- string) {
 	}
 	if resp.StatusCode == http.StatusOK {
 		defer resp.Body.Close()
-		body, err := io.ReadAll(resp.Body)
+		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
 			impl.Log.Error(err, "error while reading response body", "error", err, "respBody", resp.Body)
 			detected <- bean.Unknown

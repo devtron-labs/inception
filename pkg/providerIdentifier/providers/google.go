@@ -3,8 +3,8 @@ package providers
 import (
 	"github.com/devtron-labs/inception/pkg/providerIdentifier/bean"
 	"github.com/go-logr/logr"
+	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -13,7 +13,7 @@ type IdentifyGoogle struct {
 }
 
 func (impl *IdentifyGoogle) Identify() (string, error) {
-	data, err := os.ReadFile(bean.GoogleSysFile)
+	data, err := ioutil.ReadFile(bean.GoogleSysFile)
 	if err != nil {
 		impl.Log.Error(err, "error while reading file", "error", err)
 		return bean.Unknown, err

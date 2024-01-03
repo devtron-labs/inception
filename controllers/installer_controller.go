@@ -196,9 +196,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError}
 			}
-			r.Log.Info("------====before 1=====------")
 			payload.CloudProvider = provider
-			r.Log.Info("------====after 1=====------")
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
@@ -225,9 +223,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload.EventType = InstallationInternalApplicationError
 			}
-			r.Log.Info("------====before 2=====------")
 			payload.CloudProvider = provider
-			r.Log.Info("------====after 2=====------")
 			err = r.sendEvent(payload)
 			if err != nil {
 				r.Log.Error(err, "failed to send event to posthog")
