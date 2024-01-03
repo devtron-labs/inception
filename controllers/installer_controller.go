@@ -163,7 +163,7 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		r.Log.Error(err, "exception while getting cluster provider", "error", err, "provider", provider)
 		return reconcile.Result{}, err
 	}
-	r.Log.Info("cloud provider name === ", provider)
+	r.Log.Info("cloud provider name === ", "provider", provider)
 
 	//TODO - setup correct event trigger points
 	if updated {
