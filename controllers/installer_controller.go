@@ -195,10 +195,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError}
 			}
-			payload.CloudProvider = provider
-			err = r.sendEvent(payload)
-			if err != nil {
-				r.Log.Error(err, "failed to send event to posthog")
+			if payload != nil {
+				payload.CloudProvider = provider
+				err = r.sendEvent(payload)
+				if err != nil {
+					r.Log.Error(err, "failed to send event to posthog")
+				}
 			}
 
 			return reconcile.Result{}, err
@@ -222,15 +224,17 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload.EventType = InstallationInternalApplicationError
 			}
-			payload.CloudProvider = provider
-			err = r.sendEvent(payload)
-			if err != nil {
-				r.Log.Error(err, "failed to send event to posthog")
-			}
-			if payload.EventType == InstallationSuccess && cm != nil {
-				err = r.updateStatusOnCm(cm)
+			if payload != nil {
+				payload.CloudProvider = provider
+				err = r.sendEvent(payload)
 				if err != nil {
-					r.Log.Error(err, "failed to update cm")
+					r.Log.Error(err, "failed to send event to posthog")
+				}
+				if payload.EventType == InstallationSuccess && cm != nil {
+					err = r.updateStatusOnCm(cm)
+					if err != nil {
+						r.Log.Error(err, "failed to update cm")
+					}
 				}
 			}
 		}
