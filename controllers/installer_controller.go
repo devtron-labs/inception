@@ -27,6 +27,7 @@ import (
 	installerv1alpha1 "github.com/devtron-labs/inception/api/v1alpha1"
 	"github.com/devtron-labs/inception/pkg/language"
 	parser2 "github.com/devtron-labs/inception/pkg/language/parser"
+	"github.com/devtron-labs/inception/pkg/providerIdentifier"
 	"github.com/go-logr/logr"
 	"github.com/patrickmn/go-cache"
 	"github.com/posthog/posthog-go"
@@ -94,6 +95,7 @@ type TelemetryEventDto struct {
 	ServerVersion  string             `json:"serverVersion,omitempty"`
 	DevtronVersion string             `json:"devtronVersion,omitempty"`
 	DevtronMode    string             `json:"devtronMode,omitempty"`
+	CloudProvider  string             `json:"cloudProvider,omitempty"`
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
@@ -155,6 +157,13 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		objectEventType = Applied
 	}
 
+	cloudIdentifier := providerIdentifier.NewProviderIdentifierServiceImpl(r.Log)
+	provider, err := cloudIdentifier.IdentifyProvider()
+	if err != nil {
+		r.Log.Error(err, "exception while getting cluster provider", "error", err, "provider", provider)
+		return reconcile.Result{}, err
+	}
+
 	//TODO - setup correct event trigger points
 	if updated {
 		fmt.Println("updating")
@@ -186,9 +195,12 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload = &TelemetryEventDto{Timestamp: time.Now(), EventType: InstallationInternalApplicationError}
 			}
-			err = r.sendEvent(payload)
-			if err != nil {
-				r.Log.Error(err, "failed to send event to posthog")
+			if payload != nil {
+				payload.CloudProvider = provider
+				err = r.sendEvent(payload)
+				if err != nil {
+					r.Log.Error(err, "failed to send event to posthog")
+				}
 			}
 
 			return reconcile.Result{}, err
@@ -212,14 +224,17 @@ func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 			if installEvent == -1 {
 				payload.EventType = InstallationInternalApplicationError
 			}
-			err = r.sendEvent(payload)
-			if err != nil {
-				r.Log.Error(err, "failed to send event to posthog")
-			}
-			if payload.EventType == InstallationSuccess && cm != nil {
-				err = r.updateStatusOnCm(cm)
+			if payload != nil {
+				payload.CloudProvider = provider
+				err = r.sendEvent(payload)
 				if err != nil {
-					r.Log.Error(err, "failed to update cm")
+					r.Log.Error(err, "failed to send event to posthog")
+				}
+				if payload.EventType == InstallationSuccess && cm != nil {
+					err = r.updateStatusOnCm(cm)
+					if err != nil {
+						r.Log.Error(err, "failed to update cm")
+					}
 				}
 			}
 		}
