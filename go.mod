@@ -5,19 +5,18 @@ go 1.13
 require (
 	github.com/antlr/antlr4 v0.0.0-20200820155224-be881fa6b91d
 	github.com/argoproj/gitops-engine v0.3.2
-	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0
 	github.com/go-logr/zapr v0.4.0 // indirect
-	github.com/google/go-cmp v0.5.2
+	github.com/google/go-cmp v0.5.9
 	github.com/onsi/ginkgo v1.12.1
 	github.com/onsi/gomega v1.10.1
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/posthog/posthog-go v0.0.0-20210616140600-8bebac98515e
 	github.com/sirupsen/logrus v1.6.0
-	github.com/tidwall/gjson v1.6.6
+	github.com/tidwall/gjson v1.9.3
 	github.com/tidwall/sjson v1.1.1
-	google.golang.org/grpc v1.27.1
+	google.golang.org/grpc v1.56.3
 	k8s.io/api v0.21.2
 	k8s.io/apiextensions-apiserver v0.20.7
 	k8s.io/apimachinery v0.21.2
