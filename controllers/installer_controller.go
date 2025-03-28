@@ -88,14 +88,15 @@ const (
 )
 
 type TelemetryEventDto struct {
-	UCID           string             `json:"ucid"` //unique client id
-	Timestamp      time.Time          `json:"timestamp"`
-	EventMessage   string             `json:"eventMessage,omitempty"`
-	EventType      TelemetryEventType `json:"eventType"`
-	ServerVersion  string             `json:"serverVersion,omitempty"`
-	DevtronVersion string             `json:"devtronVersion,omitempty"`
-	DevtronMode    string             `json:"devtronMode,omitempty"`
-	CloudProvider  string             `json:"cloudProvider,omitempty"`
+	UCID                    string             `json:"ucid"` //unique client id
+	Timestamp               time.Time          `json:"timestamp"`
+	EventMessage            string             `json:"eventMessage,omitempty"`
+	EventType               TelemetryEventType `json:"eventType"`
+	ServerVersion           string             `json:"serverVersion,omitempty"`
+	DevtronVersion          string             `json:"devtronVersion,omitempty"`
+	DevtronMode             string             `json:"devtronMode,omitempty"`
+	CloudProvider           string             `json:"cloudProvider,omitempty"`
+	DevtronInstallationType string             `json:"devtronInstallationType"`
 }
 
 // +kubebuilder:rbac:groups=installer.devtron.ai,resources=installers,verbs=get;list;watch;create;update;patch;delete
@@ -113,6 +114,12 @@ const (
 	Downloaded  ObjectEventType = "Downloaded"
 	Applied     ObjectEventType = "Applied"
 )
+
+var InstallationType = GetDevtronInstallationType()
+
+func GetDevtronInstallationType() string {
+	return os.Getenv("DEVTRON_INSTALLATION_TYPE")
+}
 
 func (r *InstallerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	_ = context.Background()
@@ -248,6 +255,7 @@ func (r *InstallerReconciler) sendEvent(payload *TelemetryEventDto) error {
 		return nil
 	}
 	payload.DevtronMode = DevtronFullMode
+	payload.DevtronInstallationType = InstallationType
 	prop := make(map[string]interface{})
 	reqBody, err := json.Marshal(payload)
 	if err != nil {
