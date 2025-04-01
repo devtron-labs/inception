@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/antlr/antlr4 v0.0.0-20200820155224-be881fa6b91d
 	github.com/argoproj/gitops-engine v0.3.2
-	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0
 	github.com/go-logr/zapr v0.4.0 // indirect
