@@ -330,6 +330,7 @@ func (r *InstallerReconciler) apply(installer *installerv1alpha1.Installer) *lan
 			resourceStatuses = append(resourceStatuses, rs)
 		}
 	}
+	time.Sleep(3 * time.Minute) //TODO: remove this sleep, this is to handle
 	//Update URL and data on which action was taken to handle race condition
 	installer.Status.Sync.URL = url
 	installer.Status.Sync.Data = data
